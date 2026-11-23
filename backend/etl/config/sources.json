@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "sources": {
+    "his_outpatient": {
+      "source_name": "his_outpatient",
+      "source_type": "csv",
+      "system_type": "HIS",
+      "location": "data/mock_his/his_outpatient.csv",
+      "target_table": "ods_his_outpatient_visit",
+      "load_mode": "FULL",
+      "cron": "0 2 * * *",
+      "enabled": true,
+      "remark": "HIS 门诊挂号就诊数据，T+1 日终批全量抽取"
+    },
+    "his_inpatient": {
+      "source_name": "his_inpatient",
+      "source_type": "csv",
+      "system_type": "HIS",
+      "location": "data/mock_his/his_inpatient.csv",
+      "target_table": "ods_his_inpatient_visit",
+      "load_mode": "FULL",
+      "cron": "0 2 * * *",
+      "enabled": true,
+      "remark": "HIS 住院入出院数据，T+1 日终批全量抽取"
+    },
+    "his_charge": {
+      "source_name": "his_charge",
+      "source_type": "csv",
+      "system_type": "HIS",
+      "location": "data/mock_his/his_charge.csv",
+      "target_table": "ods_his_charge_detail",
+      "load_mode": "INC",
+      "cron": "0 2 * * *",
+      "enabled": true,
+      "remark": "HIS 收费明细流水，按 fee_date 增量抽取，关键指标支持小时增量"
+    },
+    "emr_record": {
+      "source_name": "emr_record",
+      "source_type": "csv",
+      "system_type": "EMR",
+      "location": "data/mock_his/emr_record.csv",
+      "target_table": "ods_emr_record",
+      "load_mode": "FULL",
+      "cron": "0 2 * * *",
+      "enabled": true,
+      "remark": "EMR 电子病历首页摘要，T+1 日终批"
+    },
+    "lis_report": {
+      "source_name": "lis_report",
+      "source_type": "csv",
+      "system_type": "LIS",
+      "location": "data/mock_his/lis_report.csv",
+      "target_table": "ods_lis_report",
+      "load_mode": "INC",
+      "cron": "0 2 * * *",
+      "enabled": true,
+      "remark": "LIS 检验报告，按 report_date 增量抽取"
+    },
+    "finance_excel": {
+      "source_name": "finance_excel",
+      "source_type": "csv",
+      "system_type": "FINANCE",
+      "location": "data/files/finance_excel.csv",
+      "target_table": "ods_finance_excel",
+      "load_mode": "FULL",
+      "cron": "0 3 * * *",
+      "enabled": true,
+      "remark": "财务日报（Excel/CSV 文件通道），人工上传或目录扫描"
+    }
+  }
+}
