@@ -15,6 +15,7 @@ Settings → Branches → Add branch protection rule（分支名 `main`）：
 - [x] Require approvals：**1**（成员 ≥3 人时建议 2）
 - [x] Dismiss stale pull request approvals when new commits are pushed
 - [x] Require conversation resolution before merging
+- [x] Require status checks to pass before merging → 勾选 **`CI / ETL 冒烟测试与数据基线校验`**（`.github/workflows/ci.yml`）
 - [x] Require linear history（保持提交历史线性）
 - [x] Do not allow bypassing the above settings（管理员同样受约束）
 - [x] Restrict who can push to matching branches（仅维护者可合并）

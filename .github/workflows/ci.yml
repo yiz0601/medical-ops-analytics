@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  etl-smoke:
+    name: ETL 冒烟测试与数据基线校验
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装 ETL 依赖
+        run: |
+          python -m pip install --upgrade pip
+          # 阶段二 ETL 仅需以下依赖；后续阶段可改为 pip install -r backend/requirements.txt
+          pip install pandas sqlalchemy pymysql
+
+      - name: 校验数据集完整性
+        run: |
+          python - <<'PY'
+          import hashlib, pathlib, sys
+          expected = {
+              "data/mock_his/his_outpatient.csv": 9000,
+              "data/mock_his/his_inpatient.csv": 1500,
+              "data/mock_his/his_charge.csv": 44078,
+              "data/mock_his/emr_record.csv": 1500,
+              "data/mock_his/lis_report.csv": 2934,
+              "data/files/finance_excel.csv": 910,
+          }
+          ok = True
+          for path, rows in expected.items():
+              lines = pathlib.Path(path).read_text(encoding="utf-8-sig").count("\n")
+              actual = lines - 1
+              flag = "OK" if actual == rows else "FAIL"
+              print(f"[{flag}] {path}: {actual} 行（期望 {rows}）")
+              ok = ok and actual == rows
+          sys.exit(0 if ok else 1)
+          PY
+
+      - name: 运行冒烟测试（含幂等性与指标基线断言）
+        working-directory: backend
+        run: python -m tests.test_etl_smoke
+
+      - name: 上传质量报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-report
+          path: backend/etl/logs/quality_report_*.json
+          if-no-files-found: warn
