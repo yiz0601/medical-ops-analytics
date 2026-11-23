@@ -31,8 +31,10 @@ medical-ops-analytics/                 # 本工程根目录
 │   ├── etl/
 │   │   ├── config/                      # ✅ 阶段二：settings / dicts / ods_schema / dwd_schema
 │   │   │                                #    source_config（数据源注册）/ loader / baseline / sources.json
-│   │   ├── jobs/                        # ✅ 阶段二：extract_ods（采集+装载）/ clean_dwd（清洗脱敏）
+│   │   ├── jobs/                        # ✅ 阶段二：extract_ods（采集+装载）/ clean_dwd（清洗脱敏 + DWD 宽表）
 │   │   │                                #    quality_check（5 类规则+报告）/ run_all（总入口）
+│   │   │                                # ✅ 阶段三：init_dim（维表）/ aggregate_dws（DWS+8 集市）
+│   │   │                                #    ads_indicators（33 项指标+对账）/ export_ddl（生成 MySQL DDL）
 │   │   ├── scheduler/                   # ✅ 阶段二：scheduler.py（注册/重试/编排/定时/日志）
 │   │   └── quality/                     # 阶段三起：规则引擎与报告模块拆分
 │   ├── requirements.txt                 # 已就绪
@@ -122,7 +124,26 @@ python -m tests.test_etl_smoke
 产物：`backend/etl/logs/task_run.log`（任务日志）、
 `backend/etl/logs/quality_report_YYYYMMDD.json`（质量报告：25 条规则、评分、覆盖率、告警清单）。
 
-### 3. 容器化部署
+### 3. 数据仓库与指标计算（阶段三，已交付）
+
+```bash
+cd backend
+
+# 生成 MySQL DDL（维表含初始化数据；ODS/DWD/DWS/ADS 由表结构自动生成）
+python -m etl.jobs.export_ddl
+mysql -h127.0.0.1 -uroot -p < sql/dim/dim_tables.sql    # 依次 dim/ods/dwd/dws/ads
+
+# 单独执行各阶段（也可直接用 run_all 串跑全部 8 个任务）
+python -m etl.jobs.init_dim                       # 公共维表（6 张：科室14/日期821/病种10/收费类别10/DRG10/号别5）
+python -m etl.jobs.clean_dwd                      # DWD 分源明细 + 就诊/收费宽表（10500 / 44078 行）
+python -m etl.jobs.aggregate_dws                  # DWS 汇总（910 行）+ 8 大主题集市（各 910 行）
+python -m etl.jobs.ads_indicators                 # 33 项指标写入 ads_indicator_result + 手工 SQL 对账
+```
+
+指标结果：`ads_indicator_result`（唯一键 = 指标编码 + 维度值 + 粒度 + 统计日期）；
+对账记录：`backend/etl/logs/indicator_reconcile_YYYYMMDD.json`；指标运行日志：`backend/etl/logs/indicator_run.log`。
+
+### 4. 容器化部署
 
 ```bash
 cp deploy/.env.example deploy/.env      # 按需修改数据库口令、JWT 密钥、LLM Key
@@ -147,7 +168,7 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
 
 - [x] 阶段一：项目准备 —— 目录骨架、模拟数据入库、文档体系
 - [x] 阶段二：多源数据采集与整合 —— ODS 建表、ETL 任务、DWD 清洗、质量校验（6 张 ODS + 6 张 DWD 落库，行数与基线一致；25 条质量规则评分 92.0、字段覆盖率 100%）
-- [ ] 阶段三：数据仓库建模与指标计算 —— DIM/DWD/DWS/ADS、30+ 指标
+- [x] 阶段三：数据仓库建模与指标计算 —— DIM 6 表 / DWD 宽表 / DWS 汇总 / 8 大主题集市 / **33 项指标（M01–M33）**，11 项核心指标命中基线，10 项手工 SQL 对账误差 ≤ 0.00003
 - [ ] 阶段四：后端服务开发 —— 认证鉴权、指标查询、多维分析、导出
 - [ ] 阶段五：前端可视化开发 —— 10 类图表组件、3 套看板
 - [ ] 阶段六：智能分析与大模型对接 —— NL2SQL、报告生成、异常归因
