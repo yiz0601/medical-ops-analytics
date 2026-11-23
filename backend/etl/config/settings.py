@@ -78,18 +78,27 @@ def reset_engine() -> None:
 
 
 def init_ods_dwd_tables(engine: Engine | None = None) -> list[str]:
-    """建表（幂等）：在目标库中创建 ODS 与 DWD 全部表。
+    """建表（幂等）：在目标库中创建 DIM / ODS / DWD / DWS / ADS 全部表。
 
-    生产环境应执行 sql/ods/ods_tables.sql 与 sql/dwd/dwd_tables.sql（MySQL DDL），
+    生产环境应执行 sql/{dim,ods,dwd,dws,ads}/*.sql（MySQL DDL），
     本函数用于本地 SQLite 冒烟验证与单元测试，两者列定义保持一致。
     """
+    from etl.config.dim_schema import DIM_METADATA
     from etl.config.dwd_schema import DWD_METADATA
+    from etl.config.mart_schema import MART_METADATA
     from etl.config.ods_schema import ODS_METADATA
 
     eng = engine or get_engine()
+    DIM_METADATA.create_all(eng, checkfirst=True)
     ODS_METADATA.create_all(eng, checkfirst=True)
     DWD_METADATA.create_all(eng, checkfirst=True)
-    return sorted(ODS_METADATA.tables) + sorted(DWD_METADATA.tables)
+    MART_METADATA.create_all(eng, checkfirst=True)
+    return (
+        sorted(DIM_METADATA.tables)
+        + sorted(ODS_METADATA.tables)
+        + sorted(DWD_METADATA.tables)
+        + sorted(MART_METADATA.tables)
+    )
 
 
 def ping_db(engine: Engine | None = None) -> bool:

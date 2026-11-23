@@ -37,6 +37,7 @@ FEE_TYPE_DICT: dict[str, tuple[str, str]] = {
     "HL": ("护理费", "医疗服务性收入"),
 }
 FEE_CLASS: dict[str, str] = {k: v[1] for k, v in FEE_TYPE_DICT.items()}
+FEE_TYPE_NAME: dict[str, str] = {k: v[0] for k, v in FEE_TYPE_DICT.items()}
 
 # ---------------------------------------------------------------- 号别
 # 源数据只出现中文号别，统一映射为标准编码
