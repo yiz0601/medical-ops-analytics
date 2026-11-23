@@ -21,7 +21,7 @@
 medical-ops-analytics/                 # 本工程根目录
 ├── backend/                           # 后端服务（Python FastAPI）
 │   ├── app/
-│   │   ├── main.py                    # 应用入口（已就绪：健康检查 + 路由注册位）
+│   │   ├── main.py                    # ✅ create_app() 应用工厂（CORS/外壳中间件/异常处理/路由）
 │   │   ├── core/                      # 配置、鉴权、依赖注入、统一响应与异常
 │   │   ├── api/                       # RESTful 接口层（按模块拆分路由）
 │   │   ├── models/                    # ORM 数据模型
@@ -143,7 +143,47 @@ python -m etl.jobs.ads_indicators                 # 33 项指标写入 ads_indic
 指标结果：`ads_indicator_result`（唯一键 = 指标编码 + 维度值 + 粒度 + 统计日期）；
 对账记录：`backend/etl/logs/indicator_reconcile_YYYYMMDD.json`；指标运行日志：`backend/etl/logs/indicator_run.log`。
 
-### 4. 容器化部署
+### 4. 后端服务（阶段四，已交付）
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+# Swagger：http://127.0.0.1:8000/docs      OpenAPI：http://127.0.0.1:8000/api/openapi.json
+
+# 单元 + 接口测试（覆盖率门槛 80%，实测 88.8%）
+python -m pytest
+```
+
+首次调用示例（默认账号 admin / Admin@123）：
+
+```bash
+TOKEN=$(curl -s -X POST http://127.0.0.1:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"Admin@123"}' | python -c "import sys,json;print(json.load(sys.stdin)['data']['access_token'])")
+
+curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8000/api/dashboard/overview
+curl -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:8000/api/outpatient/metrics?granularity=period"
+curl -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:8000/api/dashboard/export?metric=M16&format=xlsx" -o 指标导出.xlsx
+```
+
+| 接口 | 说明 | 权限 |
+| --- | --- | --- |
+| `POST /api/auth/login` | 登录换取 JWT（有效期 480 分钟，可配） | 公开 |
+| `POST /api/auth/users` | 新建用户（密码 bcrypt 哈希） | 管理员 |
+| `GET /api/auth/profile` | 当前用户信息与数据范围 | 登录用户 |
+| `GET /api/dashboard/overview` | 驾驶舱总览：7 张 KPI 卡（全期口径）+ 收入趋势 + 科室排行 | 登录用户（科室用户仅本科室） |
+| `GET /api/{outpatient,inpatient,revenue,disease,resource}/metrics` | 五大主题指标查询，支持 `metrics/dims/granularity/drill` | 登录用户 |
+| `GET /api/dashboard/export?format=xlsx\|pdf` | 导出查询结果文件流 | 登录用户 |
+| `GET /api/task/status` | 8 个 ETL 任务最近运行状态 | 登录用户 |
+| `POST /api/task/trigger` | 手动触发白名单任务 | 管理员 |
+| `GET /api/quality/report` | 数据质量报告（评分/覆盖率/告警） | 管理员、运营分析师 |
+
+* 统一响应外壳：`{"code": 0, "msg": "success", "data": {...}}`；错误码 40001/40101/40301/40401/50001/50301
+* 审计：登录、查询、导出、触发任务均写入 `sys_audit_log`（后台任务写库，不阻塞响应）
+* 数据隔离：科室用户（如 `dept_hn`）查询时自动限定 `dim_value=HN`，无法看到全院汇总行
+
+### 5. 容器化部署
 
 ```bash
 cp deploy/.env.example deploy/.env      # 按需修改数据库口令、JWT 密钥、LLM Key
@@ -169,7 +209,7 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
 - [x] 阶段一：项目准备 —— 目录骨架、模拟数据入库、文档体系
 - [x] 阶段二：多源数据采集与整合 —— ODS 建表、ETL 任务、DWD 清洗、质量校验（6 张 ODS + 6 张 DWD 落库，行数与基线一致；25 条质量规则评分 92.0、字段覆盖率 100%）
 - [x] 阶段三：数据仓库建模与指标计算 —— DIM 6 表 / DWD 宽表 / DWS 汇总 / 8 大主题集市 / **33 项指标（M01–M33）**，11 项核心指标命中基线，10 项手工 SQL 对账误差 ≤ 0.00003
-- [ ] 阶段四：后端服务开发 —— 认证鉴权、指标查询、多维分析、导出
+- [x] 阶段四：后端服务开发 —— 配置中心与应用工厂、JWT 鉴权与数据隔离、指标查询服务、驾驶舱与五大主题路由、导出（xlsx/pdf）、任务与质量接口；**pytest 21 项通过、覆盖率 88.8%**
 - [ ] 阶段五：前端可视化开发 —— 10 类图表组件、3 套看板
 - [ ] 阶段六：智能分析与大模型对接 —— NL2SQL、报告生成、异常归因
 - [ ] 阶段七：系统测试与部署验收 —— 用例、缺陷闭环、容器化部署

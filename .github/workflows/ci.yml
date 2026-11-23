@@ -26,13 +26,13 @@ jobs:
       - name: 安装 ETL 依赖
         run: |
           python -m pip install --upgrade pip
-          # 阶段二 ETL 仅需以下依赖；后续阶段可改为 pip install -r backend/requirements.txt
+          # 阶段二/三 ETL 仅需以下依赖；阶段四 API 依赖见 api-tests 任务
           pip install pandas sqlalchemy pymysql
 
       - name: 校验数据集完整性
         run: |
           python - <<'PY'
-          import hashlib, pathlib, sys
+          import pathlib, sys
           expected = {
               "data/mock_his/his_outpatient.csv": 9000,
               "data/mock_his/his_inpatient.csv": 1500,
@@ -51,14 +51,56 @@ jobs:
           sys.exit(0 if ok else 1)
           PY
 
-      - name: 运行冒烟测试（含幂等性与指标基线断言）
+      - name: 运行冒烟测试（采集→清洗→质检→宽表→DWS/集市→指标）
         working-directory: backend
         run: python -m tests.test_etl_smoke
 
-      - name: 上传质量报告
+      - name: 上传质量报告与对账记录
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: quality-report
-          path: backend/etl/logs/quality_report_*.json
+          name: etl-reports
+          path: |
+            backend/etl/logs/quality_report_*.json
+            backend/etl/logs/indicator_reconcile_*.json
           if-no-files-found: warn
+
+  api-tests:
+    name: 后端接口测试与覆盖率（阶段四）
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装后端依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: 运行单元与接口测试（含 80% 覆盖率门槛）
+        working-directory: backend
+        run: python -m pytest
+
+      - name: 校验 OpenAPI 文档
+        working-directory: backend
+        run: |
+          python - <<'PY'
+          from fastapi.testclient import TestClient
+          from app.main import create_app
+
+          with TestClient(create_app()) as client:
+              spec = client.get("/api/openapi.json").json()
+          paths = sorted(spec["paths"])
+          print(f"OpenAPI {spec['openapi']} · {len(paths)} 条路由")
+          for path in paths:
+              print("  ", path)
+          assert "/api/auth/login" in paths and "/api/dashboard/overview" in paths
+          PY

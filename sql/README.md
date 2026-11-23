@@ -14,6 +14,10 @@ python -m etl.jobs.export_ddl              # 重新生成全部五层脚本
 python -m etl.jobs.export_ddl --layer dim  # 仅重新生成维表脚本
 ```
 
+> **表结构变更须知**：建表函数使用 `CREATE TABLE IF NOT EXISTS`（不做自动迁移）。
+> 调整列定义后，开发库需删除 `backend/etl/logs/moa_dev.db` 重新跑一遍全链路；
+> MySQL 环境请执行对应的 `ALTER TABLE` 或重建表后再重跑。
+
 ## 目录职责与交付状态
 
 | 目录 | 职责 | 脚本 | 状态 |

@@ -32,6 +32,12 @@ logs/
 Thumbs.db
 desktop.ini
 
+# ---------- 测试与覆盖率产物 ----------
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
 # ---------- 临时文件 ----------
 *.tmp
 *.bak
