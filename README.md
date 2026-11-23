@@ -78,6 +78,8 @@ medical-ops-analytics/                 # 本工程根目录
 | [部署运维手册](docs/部署运维手册.md) | 环境要求、容器部署、运维巡检、故障处理 | 运维 |
 | [用户操作手册](docs/用户操作手册.md) | 角色权限、看板与报表操作、智能问数使用 | 业务用户 |
 
+> 协作规范见 [CONTRIBUTING.md](CONTRIBUTING.md)：main 受保护，变更一律经 Fork/特性分支 + Pull Request 合入。
+
 ## 四、快速开始
 
 ### 1. 本地开发
