@@ -1,0 +1,93 @@
+version: "3.9"
+
+# 医疗运营数据主题分析平台 —— 一体化部署编排
+# 启动：docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+# 说明：所有服务处于自定义网络 medical-net，仅 Nginx 对外暴露 80 端口。
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: moa-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Moa@Root123}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-medical_ops}
+      MYSQL_USER: ${MYSQL_USER:-moa}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-Moa@123456}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --default-time-zone=+08:00
+      - --max_connections=500
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../sql:/docker-entrypoint-initdb.d/sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-Moa@Root123}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - medical-net
+
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+    container_name: moa-backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-prod}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${MYSQL_DATABASE:-medical_ops}
+      DB_USER: ${MYSQL_USER:-moa}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-Moa@123456}
+      JWT_SECRET: ${JWT_SECRET:-please-change-this-secret-in-production}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      TZ: Asia/Shanghai
+    depends_on:
+      mysql:
+        condition: service_healthy
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    volumes:
+      - ../data:/app/data:ro
+      - upload_data:/app/uploads
+    networks:
+      - medical-net
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.frontend
+    container_name: moa-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - medical-net
+
+volumes:
+  mysql_data:
+  upload_data:
+
+networks:
+  medical-net:
+    driver: bridge

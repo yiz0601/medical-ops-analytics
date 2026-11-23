@@ -1,0 +1,32 @@
+# 医疗运营数据主题分析平台 —— 前端镜像（多阶段构建）
+# 构建上下文为项目根目录：docker build -f deploy/Dockerfile.frontend -t moa-frontend .
+
+# ---------- 阶段一：构建 ----------
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm config set registry https://registry.npmmirror.com && \
+    (npm ci || npm install)
+
+COPY frontend/ ./
+RUN npm run build
+
+# ---------- 阶段二：运行 ----------
+FROM nginx:1.27-alpine
+
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD wget -q --spider http://127.0.0.1/ || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]
