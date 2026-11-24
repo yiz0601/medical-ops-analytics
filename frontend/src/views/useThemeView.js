@@ -6,19 +6,10 @@ import { computed, reactive, ref } from 'vue'
 import { themeMetrics } from '@/api/modules'
 import { useUserStore } from '@/store/user'
 
-export const DEPT_OPTIONS = [
-  { code: 'ALL', name: '全院' },
-  { code: 'HN', name: '呼吸内科' },
-  { code: 'HX', name: '消化内科' },
-  { code: 'SJ', name: '神经内科' },
-  { code: 'XH', name: '心血管内科' },
-  { code: 'GK', name: '骨科' },
-  { code: 'PW', name: '普外科' },
-  { code: 'FC', name: '妇产科' },
-  { code: 'EK', name: '儿科' },
-  { code: 'JZ', name: '急诊科' },
-  { code: 'ICU', name: '重症医学科' }
-]
+// 维度与格式化工具统一从 utils 复用，视图不再各自实现
+import { DEPT_OPTIONS, deptName as utilDeptName, formatNumber as utilFormatNumber } from '@/utils/format'
+
+export { DEPT_OPTIONS }
 
 export function useThemeView({ theme, defaultMetrics, metricLabels, mainMetric }) {
   const user = useUserStore()
@@ -167,12 +158,5 @@ export function useThemeView({ theme, defaultMetrics, metricLabels, mainMetric }
   }
 }
 
-export function deptName(code) {
-  const found = DEPT_OPTIONS.find((item) => item.code === code)
-  return found ? found.name : code
-}
-
-export function formatNumber(value, digits = 2) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—'
-  return Number(value).toLocaleString('zh-CN', { maximumFractionDigits: digits })
-}
+export const deptName = utilDeptName
+export const formatNumber = utilFormatNumber
