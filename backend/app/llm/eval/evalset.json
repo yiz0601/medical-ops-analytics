@@ -1,0 +1,575 @@
+{
+  "meta": {
+    "name": "医疗运营 NL2SQL 评测集",
+    "version": "V1.0",
+    "total": 50,
+    "topics": [
+      "住院",
+      "患者服务",
+      "收入",
+      "病种",
+      "耗材",
+      "药品",
+      "资源效率",
+      "门诊"
+    ],
+    "granularities": [
+      "day",
+      "month",
+      "period"
+    ],
+    "scoring": "指标编码 + 维度值 + 粒度 三项全对才计为通过"
+  },
+  "items": [
+    {
+      "id": "Q001",
+      "question": "本月门诊人次是多少",
+      "topic": "门诊",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M01",
+        "dim_value": "ALL",
+        "granularity": "month"
+      }
+    },
+    {
+      "id": "Q002",
+      "question": "上月门诊人次",
+      "topic": "门诊",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M01",
+        "dim_value": "ALL",
+        "granularity": "month"
+      }
+    },
+    {
+      "id": "Q003",
+      "question": "本季度全院门诊人次是多少",
+      "topic": "门诊",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M01",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q004",
+      "question": "6月呼吸科门诊人次",
+      "topic": "门诊",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M01",
+        "dim_value": "HN",
+        "granularity": "month"
+      }
+    },
+    {
+      "id": "Q005",
+      "question": "门诊号别结构占比",
+      "topic": "门诊",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M02",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q006",
+      "question": "儿科门诊次均费用",
+      "topic": "门诊",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M03",
+        "dim_value": "EK",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q007",
+      "question": "上月全院门诊次均费用",
+      "topic": "门诊",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M03",
+        "dim_value": "ALL",
+        "granularity": "month"
+      }
+    },
+    {
+      "id": "Q008",
+      "question": "门急诊人次本季度多少",
+      "topic": "门诊",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M06",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q009",
+      "question": "上月门诊收入",
+      "topic": "门诊",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M07",
+        "dim_value": "ALL",
+        "granularity": "month"
+      }
+    },
+    {
+      "id": "Q010",
+      "question": "各科室门诊人次排名",
+      "topic": "门诊",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M01",
+        "dim_value": null,
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q011",
+      "question": "本季度出院人次",
+      "topic": "住院",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M08",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q012",
+      "question": "骨科出院人次上个月多少",
+      "topic": "住院",
+      "difficulty": "hard",
+      "expect_points": {
+        "metric_code": "M08",
+        "dim_value": "GK",
+        "granularity": "month"
+      }
+    },
+    {
+      "id": "Q013",
+      "question": "入院人次",
+      "topic": "住院",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M09",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q014",
+      "question": "实际占用总床日数",
+      "topic": "住院",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M10",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q015",
+      "question": "上月呼吸科床位使用率趋势如何",
+      "topic": "住院",
+      "difficulty": "hard",
+      "expect_points": {
+        "metric_code": "M11",
+        "dim_value": "HN",
+        "granularity": "month"
+      }
+    },
+    {
+      "id": "Q016",
+      "question": "各科室床位使用率排名",
+      "topic": "住院",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M11",
+        "dim_value": null,
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q017",
+      "question": "儿科平均住院日这几个月怎么变化的",
+      "topic": "住院",
+      "difficulty": "hard",
+      "expect_points": {
+        "metric_code": "M12",
+        "dim_value": "EK",
+        "granularity": "month"
+      }
+    },
+    {
+      "id": "Q018",
+      "question": "全院平均住院日",
+      "topic": "住院",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M12",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q019",
+      "question": "住院次均费用",
+      "topic": "住院",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M13",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q020",
+      "question": "手术占比",
+      "topic": "住院",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M14",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q021",
+      "question": "6月住院收入",
+      "topic": "住院",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M15",
+        "dim_value": "ALL",
+        "granularity": "month"
+      }
+    },
+    {
+      "id": "Q022",
+      "question": "本季度医疗收入合计",
+      "topic": "收入",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M16",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q023",
+      "question": "6月总收入",
+      "topic": "收入",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M16",
+        "dim_value": "ALL",
+        "granularity": "month"
+      }
+    },
+    {
+      "id": "Q024",
+      "question": "各科室医疗收入排名",
+      "topic": "收入",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M16",
+        "dim_value": null,
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q025",
+      "question": "药品收入本季度",
+      "topic": "药品",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M17",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q026",
+      "question": "上个月耗材收入",
+      "topic": "耗材",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M18",
+        "dim_value": "ALL",
+        "granularity": "month"
+      }
+    },
+    {
+      "id": "Q027",
+      "question": "6月的药占比是多少",
+      "topic": "药品",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M19",
+        "dim_value": "ALL",
+        "granularity": "month"
+      }
+    },
+    {
+      "id": "Q028",
+      "question": "各科室药占比对比",
+      "topic": "药品",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M19",
+        "dim_value": null,
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q029",
+      "question": "耗占比",
+      "topic": "耗材",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M20",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q030",
+      "question": "检查检验收入占比",
+      "topic": "收入",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M21",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q031",
+      "question": "医疗服务性收入占比",
+      "topic": "收入",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M22",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q032",
+      "question": "收入增长率",
+      "topic": "收入",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M33",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q033",
+      "question": "DRG 入组率",
+      "topic": "病种",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M23",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q034",
+      "question": "CMI 病例组合指数",
+      "topic": "病种",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M24",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q035",
+      "question": "各科室 CMI 对比",
+      "topic": "病种",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M24",
+        "dim_value": null,
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q036",
+      "question": "费用消耗指数",
+      "topic": "病种",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M25",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q037",
+      "question": "时间消耗指数",
+      "topic": "病种",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M26",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q038",
+      "question": "低风险组死亡率",
+      "topic": "病种",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M27",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q039",
+      "question": "医师人均门诊人次",
+      "topic": "资源效率",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M28",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q040",
+      "question": "床护比",
+      "topic": "资源效率",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M29",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q041",
+      "question": "百元医疗收入耗材消耗",
+      "topic": "耗材",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M30",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q042",
+      "question": "各科室床位使用率对比",
+      "topic": "资源效率",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M11",
+        "dim_value": null,
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q043",
+      "question": "ICU 床位使用率",
+      "topic": "资源效率",
+      "difficulty": "hard",
+      "expect_points": {
+        "metric_code": "M11",
+        "dim_value": "ICU",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q044",
+      "question": "患者复诊率",
+      "topic": "患者服务",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M31",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q045",
+      "question": "检验阳性率",
+      "topic": "患者服务",
+      "difficulty": "easy",
+      "expect_points": {
+        "metric_code": "M32",
+        "dim_value": "ALL",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q046",
+      "question": "急诊科检验阳性率",
+      "topic": "患者服务",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M32",
+        "dim_value": "JZ",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q047",
+      "question": "本季度消化内科平均住院日是多少",
+      "topic": "住院",
+      "difficulty": "medium",
+      "expect_points": {
+        "metric_code": "M12",
+        "dim_value": "HX",
+        "granularity": "period"
+      }
+    },
+    {
+      "id": "Q048",
+      "question": "普外科上个月手术占比",
+      "topic": "住院",
+      "difficulty": "hard",
+      "expect_points": {
+        "metric_code": "M14",
+        "dim_value": "PW",
+        "granularity": "month"
+      }
+    },
+    {
+      "id": "Q049",
+      "question": "妇产科 6 月出院人次",
+      "topic": "住院",
+      "difficulty": "hard",
+      "expect_points": {
+        "metric_code": "M08",
+        "dim_value": "FC",
+        "granularity": "month"
+      }
+    },
+    {
+      "id": "Q050",
+      "question": "6 月各科室医疗收入排名",
+      "topic": "收入",
+      "difficulty": "hard",
+      "expect_points": {
+        "metric_code": "M16",
+        "dim_value": null,
+        "granularity": "month"
+      }
+    }
+  ]
+}

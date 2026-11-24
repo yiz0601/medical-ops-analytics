@@ -201,3 +201,53 @@ def load_quality_report(batch_date: str | None = None, report_file: Path | str |
             for item in payload.get("alerts", [])
         ],
     }
+
+
+# ---------------------------------------------------------------- 数据源（阶段五配套）
+def list_data_sources() -> list[dict[str, Any]]:
+    """读取 ETL 数据源注册表，返回数据源清单（含文件可用性）。"""
+    try:
+        from etl.config.source_config import load_sources, resolve_location
+    except Exception:  # noqa: BLE001 - ETL 模块不可用时返回空清单
+        return []
+
+    try:
+        sources = load_sources()
+    except Exception:  # noqa: BLE001
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for name, source in sources.items():
+        location = str(source.get("location", "") or "")
+        available = False
+        if location:
+            try:
+                available = resolve_location(source).exists()
+            except Exception:  # noqa: BLE001
+                available = False
+        rows.append(
+            {
+                "source_name": name,
+                "source_type": str(source.get("source_type", "")),
+                "system_type": str(source.get("system_type", "")),
+                "target_table": str(source.get("target_table", "")),
+                "load_mode": str(source.get("load_mode", "")),
+                "location": location,
+                "enabled": bool(source.get("enabled", True)),
+                "available": available,
+            }
+        )
+    return sorted(rows, key=lambda item: item["source_name"])
+
+
+def test_data_source(source_name: str) -> tuple[bool, str]:
+    """测试单个数据源连通性，返回 (是否通过, 说明)。"""
+    try:
+        from etl.config.source_config import test_connection
+    except Exception as exc:  # noqa: BLE001
+        return False, f"数据源模块不可用：{exc}"
+    try:
+        passed = test_connection(source_name)
+    except Exception as exc:  # noqa: BLE001
+        return False, f"连接测试异常：{type(exc).__name__}: {exc}"
+    return (True, f"{source_name} 连接测试通过") if passed else (False, f"{source_name} 连接测试失败")

@@ -5,7 +5,7 @@
     /dashboard    管理驾驶舱与导出
     /outpatient   门诊分析     /inpatient 住院分析    /revenue 收入分析
     /disease      病种分析     /resource  资源效率分析
-    /task         采集任务监控  /quality  数据质量报告
+    /task         采集任务监控  /quality  数据质量报告  /system 系统管理  /llm 智能分析
 """
 
 from __future__ import annotations
@@ -17,10 +17,12 @@ from app.api.routers import (
     dashboard_router,
     disease_router,
     inpatient_router,
+    llm_router,
     outpatient_router,
     quality_router,
     resource_router,
     revenue_router,
+    system_router,
     task_router,
 )
 
@@ -35,7 +37,9 @@ for module in (
     disease_router,
     resource_router,
     task_router,
+    llm_router,
     quality_router,
+    system_router,
 ):
     api_router.include_router(module.router)
 

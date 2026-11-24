@@ -68,3 +68,25 @@ class QualityReportOut(BaseModel):
     blocking: bool = False
     generate_time: str = ""
     alerts: list[QualityAlert] = Field(default_factory=list)
+
+
+class RoleOut(BaseModel):
+    """RBAC 角色（供角色管理页展示）。"""
+
+    role_code: str
+    role_name: str
+    description: str = ""
+    permissions: list[str] = Field(default_factory=list)
+
+
+class DataSourceOut(BaseModel):
+    """数据源注册信息（供数据源管理页展示）。"""
+
+    source_name: str
+    source_type: str = ""
+    system_type: str = ""
+    target_table: str = ""
+    load_mode: str = ""
+    location: str = ""
+    enabled: bool = True
+    available: bool = False

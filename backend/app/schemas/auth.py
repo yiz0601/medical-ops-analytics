@@ -31,3 +31,12 @@ class UserCreateIn(BaseModel):
     real_name: str = Field(default="", max_length=64, description="姓名")
     role_code: str = Field(default="ANALYST", description="角色：ADMIN / ANALYST / DEPT_USER（或 admin/analyst/department）")
     dept_code: str | None = Field(default=None, description="科室编码（角色为 DEPT_USER 时必填）")
+
+
+class UserUpdateIn(BaseModel):
+    """用户编辑（角色 / 科室 / 启停）。"""
+
+    role_code: str | None = Field(default=None, description="角色：ADMIN / ANALYST / DEPT_USER（或别名）")
+    dept_code: str | None = Field(default=None, description="科室编码（角色为 DEPT_USER 时必填）")
+    real_name: str | None = Field(default=None, max_length=64, description="姓名")
+    is_active: bool | None = Field(default=None, description="是否启用")

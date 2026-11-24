@@ -110,6 +110,36 @@ def _seed_ads_data(engine) -> None:
         conn.execute(delete(ads_indicator_result))
         conn.execute(insert(ads_indicator_result), rows)
 
+    # 脱敏样例：供 tests/test_security.py::test_data_masking 校验（DWD 层不得出现明文）
+    from etl.config.dwd_schema import DWD_TABLES
+
+    masked_rows = [
+        {
+            "visit_id": f"OV90000{index}",
+            "patient_id": f"P9000{index}",
+            "patient_name_masked": "张**",
+            "id_card_masked": "110184*******7609",
+            "phone_masked": "138****7907",
+            "gender": "女",
+            "age": 40 + index,
+            "age_group": "中年",
+            "dept_code": "HN",
+            "dept_name": "呼吸内科",
+            "visit_date": date.fromisoformat("2025-05-1" + str(index)),
+            "visit_ym": "2025-05",
+            "visit_type": "普通",
+            "visit_type_code": "PT",
+            "fee_amount": 300.0 + index,
+            "etl_batch_date": date.fromisoformat(BATCH_DATE),
+            "etl_batch_id": "B20250630",
+            "etl_load_time": __import__("datetime").datetime(2025, 6, 30, 2, 0, 0),
+        }
+        for index in range(1, 3)
+    ]
+    with engine.begin() as conn:
+        conn.execute(delete(DWD_TABLES["dwd_outpatient_visit_detail"]))
+        conn.execute(insert(DWD_TABLES["dwd_outpatient_visit_detail"]), masked_rows)
+
 
 @pytest.fixture(scope="session")
 def seeded_engine():
