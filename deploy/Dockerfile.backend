@@ -1,35 +1,61 @@
-# 医疗运营数据主题分析平台 —— 后端镜像
-# 构建上下文为项目根目录：docker build -f deploy/Dockerfile.backend -t moa-backend .
-FROM python:3.11-slim
+# 医疗运营数据主题分析平台 —— 后端镜像（多阶段构建）
+# builder 阶段安装依赖到独立虚拟环境，runtime 阶段只复制虚拟环境与源码，暴露 8000 并带健康检查。
+#
+# 构建上下文为项目根目录：
+#   docker build -f deploy/Dockerfile.backend -t moa-backend .
+FROM python:3.11-slim AS builder
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    TZ=Asia/Shanghai \
     PIP_NO_CACHE_DIR=1 \
     PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 
-WORKDIR /app
+WORKDIR /build
 
-RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || true \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends curl tzdata \
-    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+# 先装依赖，利用镜像层缓存
 COPY backend/requirements.txt ./requirements.txt
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --upgrade pip \
+    && /opt/venv/bin/pip install -r requirements.txt
 
-COPY backend/ ./
-COPY data/ ./data/
+# ---------------------------------------------------------------- 运行阶段
+FROM python:3.11-slim AS runtime
 
-RUN mkdir -p /app/uploads /app/logs && \
-    addgroup --system app && adduser --system --ingroup app app && \
-    chown -R app:app /app
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    TZ=Asia/Shanghai \
+    APP_ENV=prod
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl tzdata \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone \
+    && rm -rf /var/lib/apt/lists/*
+
+# 非 root 用户运行
+RUN groupadd --system app && useradd --system --gid app --home /app app
+
+WORKDIR /app
+
+COPY --from=builder /opt/venv /opt/venv
+COPY --chown=app:app backend/ ./backend/
+COPY --chown=app:app data/ ./data/
+COPY --chown=app:app deploy/ ./deploy/
+
+WORKDIR /app/backend
+
+RUN mkdir -p /app/uploads /app/backend/etl/logs && chown -R app:app /app/uploads /app/backend/etl/logs
+
 USER app
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
     CMD curl -fsS http://127.0.0.1:8000/health || exit 1
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--proxy-headers"]
