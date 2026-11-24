@@ -1,4 +1,4 @@
-"""DWD 明细层表结构（5 张规范表 + 1 张财务扩展表）。
+"""DWD 明细层表结构（5 张规范表 + 1 张财务扩展表 + 1 张人力扩展表）。
 
 设计约定：
     * 主键与 ODS 一致（1 业务事件 1 行），并追加 etl_batch_date / etl_batch_id / etl_load_time
@@ -222,6 +222,24 @@ dwd_visit_detail = Table(
     Index("idx_dwd_visit_batch", "etl_batch_date"),
 )
 
+# ---------------------------------------------------------------- 人事：科室人力明细
+dwd_hr_staff_detail = Table(
+    "dwd_hr_staff_detail",
+    DWD_METADATA,
+    Column("dept_code", String(16), primary_key=True, comment="科室编码"),
+    Column("stat_date", Date, primary_key=True, comment="台账统计日期"),
+    Column("dept_name", String(64), comment="科室名称"),
+    Column("dept_parent_code", String(16), comment="上级科室系编码"),
+    Column("dept_level", Integer, comment="科室层级：1 科室系 / 2 临床科室"),
+    Column("doctor_cnt", Integer, comment="在岗医师数"),
+    Column("nurse_cnt", Integer, comment="在岗护士数"),
+    Column("staff_total", Integer, comment="卫生技术人员合计（医师 + 护士）"),
+    Column("stat_ym", String(7), comment="台账年月 YYYY-MM"),
+    *_etl_columns(),
+    Index("idx_dwd_hr_stat", "stat_date"),
+    Index("idx_dwd_hr_batch", "etl_batch_date"),
+)
+
 DWD_TABLES: dict[str, Table] = {
     "dwd_visit_detail": dwd_visit_detail,
     "dwd_outpatient_visit_detail": dwd_outpatient_visit_detail,
@@ -230,4 +248,5 @@ DWD_TABLES: dict[str, Table] = {
     "dwd_emr_record_detail": dwd_emr_record_detail,
     "dwd_lis_report_detail": dwd_lis_report_detail,
     "dwd_finance_daily_detail": dwd_finance_daily_detail,
+    "dwd_hr_staff_detail": dwd_hr_staff_detail,
 }

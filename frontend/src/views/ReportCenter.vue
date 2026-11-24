@@ -41,6 +41,52 @@
 
     <div v-if="state.error" class="moa-error">{{ state.error }}</div>
 
+    <!-- 运营分析报告自动生成（大模型 / 模板双通道） -->
+    <div class="moa-card">
+      <h3 class="moa-card-title">
+        运营分析报告自动生成
+        <span class="moa-tag">{{ reportState.llmAvailable ? '大模型通道' : '模板通道（离线可用）' }}</span>
+      </h3>
+      <div class="moa-form-row">
+        <label>报告类型
+          <select v-model="reportFilters.reportType" class="moa-select">
+            <option value="monthly">月报</option>
+            <option value="weekly">周报</option>
+          </select>
+        </label>
+        <label v-if="reportFilters.reportType === 'monthly'">期次
+          <select v-model="reportFilters.month" class="moa-select">
+            <option value="2025-04">2025-04</option>
+            <option value="2025-05">2025-05</option>
+            <option value="2025-06">2025-06</option>
+          </select>
+        </label>
+        <label v-else>周次
+          <input v-model="reportFilters.week" class="moa-input" placeholder="2025-W25" />
+        </label>
+        <button class="moa-btn" :disabled="reportState.loading" @click="generateReport()">生成报告</button>
+        <button class="moa-btn ghost" :disabled="!reportState.report" @click="downloadReport()">下载 Markdown</button>
+      </div>
+      <div v-if="reportState.error" class="moa-error">{{ reportState.error }}</div>
+      <div v-if="reportState.report" class="report-box">
+        <h4 class="report-title">{{ reportState.report.title }}</h4>
+        <p class="report-summary">{{ reportState.report.summary }}</p>
+        <div v-for="chapter in reportState.report.chapters" :key="chapter.heading" class="report-chapter">
+          <h5>{{ chapter.heading }}</h5>
+          <p>{{ chapter.text }}</p>
+          <div v-if="chapter.metrics && Object.keys(chapter.metrics).length" class="report-metrics">
+            <span v-for="(value, key) in chapter.metrics" :key="key" class="moa-tag">{{ key }}：{{ formatNumber(value) }}</span>
+          </div>
+        </div>
+        <div v-if="reportState.report.risk_items?.length" class="report-risk">
+          <strong>风险提示</strong>
+          <ul>
+            <li v-for="(item, idx) in reportState.report.risk_items" :key="idx">{{ item }}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <div class="moa-card">
       <h3 class="moa-card-title">
         查询结果
@@ -88,7 +134,7 @@
  * handleExport() 调用导出接口触发 Excel 下载
  */
 import { computed, onMounted, reactive } from 'vue'
-import { dashboardApi, themeMetrics } from '@/api/modules'
+import { aiApi, dashboardApi, themeMetrics } from '@/api/modules'
 import { DEPT_OPTIONS, deptName, formatNumber } from '@/views/useThemeView'
 
 const METRIC_OPTIONS = {
@@ -218,9 +264,113 @@ async function handleExport() {
 }
 
 onMounted(() => buildQuery())
+
+// ---------------------------------------------------------------- 报告自动生成
+const reportFilters = reactive({ reportType: 'monthly', month: '2025-06', week: '2025-W25' })
+const reportState = reactive({ loading: false, error: '', report: null, llmAvailable: false })
+
+/** 调用 POST /api/llm/report 生成周报 / 月报（无密钥时走模板通道） */
+async function generateReport() {
+  reportState.loading = true
+  reportState.error = ''
+  try {
+    const payload = { report_type: reportFilters.reportType }
+    if (reportFilters.reportType === 'monthly') payload.month = reportFilters.month
+    else payload.week = reportFilters.week
+    const data = await aiApi.report(payload)
+    reportState.report = data
+    reportState.llmAvailable = !!data.llm_available
+  } catch (error) {
+    reportState.error = error.message || '报告生成失败'
+    reportState.report = null
+  } finally {
+    reportState.loading = false
+  }
+}
+
+/** 把生成的报告导出为 Markdown 文件（浏览器端下载） */
+function downloadReport() {
+  const report = reportState.report
+  if (!report) return
+  const lines = [`# ${report.title}`, '', report.summary || '', '']
+  ;(report.chapters || []).forEach((chapter) => {
+    lines.push(`## ${chapter.heading}`, '', chapter.text || '', '')
+    const entries = Object.entries(chapter.metrics || {})
+    if (entries.length) {
+      lines.push('| 指标 | 数值 |', '| --- | --- |')
+      entries.forEach(([key, value]) => lines.push(`| ${key} | ${formatNumber(value)} |`))
+      lines.push('')
+    }
+  })
+  if (report.risk_items?.length) {
+    lines.push('## 风险提示', '')
+    report.risk_items.forEach((item) => lines.push(`- ${item}`))
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' })
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${report.title || '运营分析报告'}.md`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
+}
 </script>
 
 <style scoped>
+.report-box {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid #e5e8ef;
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+
+.report-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #1f2733;
+}
+
+.report-summary {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #2f6fd0;
+  line-height: 1.7;
+}
+
+.report-chapter h5 {
+  margin: 12px 0 4px;
+  font-size: 13px;
+  color: #1f2733;
+}
+
+.report-chapter p {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  color: #4a5566;
+  line-height: 1.75;
+}
+
+.report-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.report-risk {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: #b7791f;
+}
+
+.report-risk ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  line-height: 1.7;
+}
+
 .moa-btn.small {
   height: 24px;
   padding: 0 8px;

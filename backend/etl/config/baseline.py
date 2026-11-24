@@ -14,6 +14,7 @@ ODS_EXPECTED_ROWS: dict[str, int] = {
     "ods_emr_record": 1500,
     "ods_lis_report": 2934,
     "ods_finance_excel": 910,
+    "ods_hr_staff": 30,
 }
 
 # ---------------------------------------------------------------- DWD 行数基线
@@ -25,6 +26,7 @@ DWD_EXPECTED_ROWS: dict[str, int] = {
     "dwd_emr_record_detail": 1500,
     "dwd_lis_report_detail": 2934,
     "dwd_finance_daily_detail": 910,
+    "dwd_hr_staff_detail": 30,
 }
 
 # ---------------------------------------------------------------- 统计期

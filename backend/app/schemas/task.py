@@ -70,6 +70,49 @@ class QualityReportOut(BaseModel):
     alerts: list[QualityAlert] = Field(default_factory=list)
 
 
+class AlertItem(BaseModel):
+    """站内信告警项（质量告警通知通道）。"""
+
+    id: int
+    alert_no: str = ""
+    batch_date: str | None = None
+    rule_code: str = ""
+    rule_name: str = ""
+    table_name: str = ""
+    level: str = "WARN"
+    rule_status: str = ""
+    failed_rows: int = 0
+    detail: str = ""
+    channel: str = "站内信"
+    receive_role: str = ""
+    created_at: str | None = None
+    notified_at: str | None = None
+    notify_ms: int = 0
+    is_read: int = 0
+
+
+class AlertTimeliness(BaseModel):
+    """告警通知及时率统计。"""
+
+    batch_date: str | None = None
+    total: int = 0
+    delivered: int = 0
+    timely: int = 0
+    unread: int = 0
+    timeliness_rate: float = 100.0
+    threshold_seconds: int = 300
+    by_level: dict[str, int] = Field(default_factory=dict)
+    channels: list[str] = Field(default_factory=list)
+
+
+class AlertListOut(BaseModel):
+    """告警列表 + 未读数 + 及时率统计。"""
+
+    unread: int = 0
+    items: list[AlertItem] = Field(default_factory=list)
+    timeliness: AlertTimeliness = Field(default_factory=AlertTimeliness)
+
+
 class RoleOut(BaseModel):
     """RBAC 角色（供角色管理页展示）。"""
 

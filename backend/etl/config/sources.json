@@ -66,6 +66,17 @@
       "cron": "0 3 * * *",
       "enabled": true,
       "remark": "财务日报（Excel/CSV 文件通道），人工上传或目录扫描"
+    },
+    "hr_staff": {
+      "source_name": "hr_staff",
+      "source_type": "csv",
+      "system_type": "HR",
+      "location": "data/mock_his/hr_staff.csv",
+      "target_table": "ods_hr_staff",
+      "load_mode": "INC",
+      "cron": "0 4 * * *",
+      "enabled": true,
+      "remark": "人事系统科室人力月度台账（医师数/护士数），按 stat_date 增量抽取，支撑 M28/M29"
     }
   }
 }

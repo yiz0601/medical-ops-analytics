@@ -50,10 +50,12 @@ from etl.scheduler.scheduler import clear_tasks, register_task, run_all as run_c
 BATCH = "2025-06-30"
 _start, _end = STAT_PERIOD
 _FAILED: list[str] = []
+_CHECKS: list[str] = []
 
 
 def check(name: str, condition: bool, detail: str = "") -> None:
     icon = "PASS" if condition else "FAIL"
+    _CHECKS.append(name)
     print(f"  [{icon}] {name}{('  ' + detail) if detail else ''}")
     if not condition:
         _FAILED.append(name)
@@ -228,9 +230,9 @@ def main() -> int:
 
     print("\n" + "=" * 80)
     if _FAILED:
-        print(f"测试失败 {len(_FAILED)} 项：{_FAILED}")
+        print(f"测试失败 {len(_FAILED)}/{len(_CHECKS)} 项：{_FAILED}")
         return 1
-    print("全部断言通过 ✔  阶段二采集整合 + 阶段三数仓与指标链路可用")
+    print(f"全部 {len(_CHECKS)} 项断言通过 ✔  阶段二采集整合 + 阶段三数仓与指标链路可用")
     return 0
 
 

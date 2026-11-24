@@ -22,6 +22,12 @@ export const routes = [
     meta: { title: '管理驾驶舱', icon: '📊', roles: ['ADMIN', 'ANALYST', 'DEPT_USER'] }
   },
   {
+    path: '/dept-board',
+    name: 'dept-board',
+    component: () => import('@/views/DeptBoard.vue'),
+    meta: { title: '科室运营看板', icon: '🏨', roles: ['ADMIN', 'ANALYST', 'DEPT_USER'] }
+  },
+  {
     path: '/outpatient',
     name: 'outpatient',
     component: () => import('@/views/Outpatient.vue'),

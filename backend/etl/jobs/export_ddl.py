@@ -101,11 +101,32 @@ def _reorder_comment(ddl: str) -> str:
     return "\n".join(fixed)
 
 
+def _index_clauses(table: Table) -> list[str]:
+    """把 Table 上声明的二级索引渲染为 MySQL 的 KEY 子句（CreateTable 不输出索引）。"""
+    clauses: list[str] = []
+    for index in sorted(table.indexes, key=lambda item: item.name or ""):
+        if not index.name:
+            continue
+        columns = ", ".join(col.name for col in index.columns)
+        unique = "UNIQUE KEY" if index.unique else "KEY"
+        phrases: list[str] = []
+        for expr in index.dialect_options["mysql"].get("length", {}) or {}:
+            _ = expr  # 预留：按列前缀长度建立索引时在此处理
+        if phrases:
+            clauses.append(f"{unique} {index.name} ({columns}) {', '.join(phrases)}".rstrip())
+        else:
+            clauses.append(f"{unique} {index.name} ({columns})")
+    return clauses
+
+
 def _create_table_sql(table: Table, comment: str | None = None) -> str:
-    """渲染单表 MySQL DDL（含 IF NOT EXISTS、引擎与字符集）。"""
+    """渲染单表 MySQL DDL（含 IF NOT EXISTS、二级索引、引擎与字符集）。"""
     ddl = str(CreateTable(table, if_not_exists=True).compile(dialect=mysql.dialect())).strip()
     ddl = _reorder_comment(ddl)
     if ddl.endswith(")"):
+        index_clauses = _index_clauses(table)
+        if index_clauses:
+            ddl = ddl[:-1].rstrip() + ",\n\t" + ",\n\t".join(index_clauses) + "\n)"
         ddl += " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
         if comment:
             ddl += f" COMMENT={_literal(comment)}"
@@ -290,7 +311,7 @@ def render_layer(layer: str) -> str:
         title = "ODS 贴源层建表脚本（阶段二 · 步骤 1）"
         source = "ods_schema.py"
         note = (
-            "\n-- 说明：字段与 data/ 下 6 个源 CSV 一一对应，仅追加 3 个 ETL 元数据字段：\n"
+            "\n-- 说明：字段与 data/ 下 7 个源 CSV 一一对应，仅追加 3 个 ETL 元数据字段：\n"
             "--       etl_batch_date（批次业务日期，幂等删除键）、etl_batch_id（批次标识）、etl_load_time（入库时间）\n"
         )
     elif layer == "dwd":
@@ -326,12 +347,30 @@ def render_layer(layer: str) -> str:
     return "".join(parts)
 
 
+def render_sys() -> str:
+    """渲染系统表建表脚本（数据质量告警 / 站内信）。"""
+    from etl.config.alert_schema import sys_alert
+
+    title = "系统表建表脚本（质量告警站内信通道）"
+    source = "alert_schema.py"
+    note = (
+        "\n-- 说明：ETL 质检产出告警后写入本表（channel=站内信），记录生成时间与送达时间；\n"
+        "--       通知及时率 = 送达耗时 ≤ 300 秒的告警数 / 告警总数（任务书建设目标 6）\n"
+    )
+    relpath = "sql/sys/sys_tables.sql"
+    parts = [HEADER.format(title=title, source=source, relpath=relpath), note]
+    parts.append("\n-- ---------------------------------------------------------------- sys_alert\n")
+    parts.append(_create_table_sql(sys_alert) + "\n")
+    return "".join(parts)
+
+
 LAYER_RENDERERS = {
     "dim": render_dim,
     "ods": lambda: render_layer("ods"),
     "dwd": lambda: render_layer("dwd"),
     "dws": lambda: render_layer("dws"),
     "ads": lambda: render_layer("ads"),
+    "sys": render_sys,
 }
 
 

@@ -48,9 +48,9 @@ def _ads_table():
 
 
 def _dept_name_map() -> dict[str, str]:
-    """科室编码 -> 名称（延迟读取维表定义，失败时降级为编码）。"""
+    """科室编码 -> 名称（延迟读取字典配置，失败时降级为编码）。"""
     try:
-        from etl.config.dim_seed import DEPT_NAME
+        from etl.config.dicts import DEPT_NAME
 
         return dict(DEPT_NAME)
     except Exception:  # noqa: BLE001 - 维度字典不可用时降级
@@ -357,4 +357,150 @@ def get_overview(
             for item in dept_rank
         ],
         "pending_metrics": pending,
+    }
+
+
+# 科室运营看板配置（管理驾驶舱之外的第三套看板）
+DEPT_BOARD_KPIS: list[str] = ["M01", "M08", "M11", "M12", "M16", "M19", "M24", "M28"]
+DEPT_BOARD_TRENDS: list[str] = ["M11", "M12", "M01", "M16"]
+DEPT_BOARD_COMPOSITION: list[str] = ["M17", "M18", "M21", "M22"]
+DEPT_BOARD_RANK_METRIC = "M16"
+
+
+def _dept_staff_snapshot(session: Session, dept_code: str) -> dict[str, Any]:
+    """读取科室人力台账最新快照（人事系统数据源接入后的 DWD 表）。"""
+    try:
+        from etl.config.dwd_schema import dwd_hr_staff_detail
+
+        table = dwd_hr_staff_detail
+        stmt = (
+            select(table)
+            .where(table.c.dept_code == dept_code)
+            .order_by(table.c.stat_date.desc())
+            .limit(1)
+        )
+        row = session.execute(stmt).mappings().first()
+    except Exception:  # noqa: BLE001 - 人力台账未就绪时降级为空快照
+        row = None
+    if not row:
+        return {"stat_date": None, "doctor_cnt": 0, "nurse_cnt": 0, "staff_total": 0, "source": "HR 人力台账（未就绪）"}
+    return {
+        "stat_date": row["stat_date"].isoformat() if row["stat_date"] else None,
+        "doctor_cnt": int(row["doctor_cnt"] or 0),
+        "nurse_cnt": int(row["nurse_cnt"] or 0),
+        "staff_total": int(row["staff_total"] or 0),
+        "source": "HR 人力台账",
+    }
+
+
+def get_dept_board(
+    session: Session,
+    dept: str | None = None,
+    date_range: Sequence[str] | None = None,
+    granularity: str | None = "month",
+    *,
+    user: CurrentUser | None = None,
+) -> dict[str, Any]:
+    """科室运营看板：单科室核心指标、趋势、收入构成、横向名次与人力快照。
+
+    数据权限：科室用户（DEPT_USER）只能查看本科室；其请求其他科室时由
+    `apply_data_scope` 过滤为空，与主题接口保持一致。
+    """
+    from app.core.response import BusinessError
+
+    gran = _normalize_granularity(granularity)
+    start, end = _normalize_date_range(date_range)
+    period = [start.isoformat(), end.isoformat()]
+
+    if not dept:
+        dept = (user.dept_code if (user and user.is_dept_scoped) else "ALL") or "ALL"
+    dept = str(dept)
+    if user is not None and user.is_dept_scoped and dept not in {user.dept_code, "ALL"}:
+        raise BusinessError(40301, f"无权查看科室 {dept} 的数据", status_code=403)
+    if dept == "ALL":
+        raise BusinessError(40001, "科室运营看板需指定科室编码，全院视角请使用管理驾驶舱")
+
+    names = _dept_name_map()
+    dept_name = names.get(dept, dept)
+
+    # 1) 科室核心指标卡（全期口径）
+    kpis: list[dict[str, Any]] = []
+    pending: set[str] = set()
+    for metric in DEPT_BOARD_KPIS:
+        points = query_indicator(session, metric, [dept], period, "period", user=user)
+        if not points:
+            pending.add(metric)
+            continue
+        enriched = compare_yoy_mom(points)
+        latest = _latest(enriched)
+        if latest is None:
+            continue
+        if latest.get("data_status") == "PENDING":
+            pending.add(metric)
+        kpis.append(latest)
+
+    # 2) 关键指标趋势（月粒度，含环比/同比）
+    trends: list[dict[str, Any]] = []
+    for metric in DEPT_BOARD_TRENDS:
+        points = query_indicator(session, metric, [dept], period, gran, user=user)
+        if not points:
+            continue
+        enriched = compare_yoy_mom(points)
+        trends.append(
+            {
+                "metric_code": metric,
+                "metric_name": enriched[0]["metric_name"],
+                "unit": enriched[0]["unit"],
+                "points": enriched,
+            }
+        )
+
+    # 3) 费别构成（收入结构饼图）
+    composition: list[dict[str, Any]] = []
+    for metric in DEPT_BOARD_COMPOSITION:
+        points = query_indicator(session, metric, [dept], period, "period", user=user)
+        if not points:
+            pending.add(metric)
+            continue
+        latest = _latest(compare_yoy_mom(points))
+        if latest is not None:
+            composition.append(latest)
+
+    # 4) 横向名次（默认按医疗收入）
+    rank: dict[str, Any] | None = None
+    all_points = query_indicator(session, DEPT_BOARD_RANK_METRIC, None, period, gran, user=user)
+    latest_by_dept: dict[str, dict[str, Any]] = {}
+    for point in all_points:
+        if point["dim_value"] == "ALL":
+            continue
+        latest_by_dept[point["dim_value"]] = point
+    ordered = sorted(
+        (item for item in latest_by_dept.values() if item["metric_value"] is not None),
+        key=lambda item: item["metric_value"],
+        reverse=True,
+    )
+    codes = [item["dim_value"] for item in ordered]
+    if dept in codes and ordered:
+        own = ordered[codes.index(dept)]
+        rank = {
+            "metric_code": DEPT_BOARD_RANK_METRIC,
+            "metric_name": own["metric_name"],
+            "dept_code": dept,
+            "rank": codes.index(dept) + 1,
+            "total_depts": len(codes),
+            "metric_value": own["metric_value"],
+            "unit": own["unit"],
+        }
+
+    return {
+        "dept_code": dept,
+        "dept_name": dept_name,
+        "period": period,
+        "granularity": gran,
+        "kpis": kpis,
+        "trends": trends,
+        "composition": composition,
+        "rank": rank,
+        "staff": _dept_staff_snapshot(session, dept),
+        "pending_metrics": sorted(pending),
     }

@@ -1,9 +1,12 @@
-"""系统管理接口（阶段五配套：角色、数据源、审计）。
+"""系统管理接口（阶段五配套：角色、数据源、审计、告警通知）。
 
     GET  /api/system/roles                     角色目录（RBAC 三角色 + 权限说明）
     GET  /api/system/datasources               数据源注册清单（来自 etl/config/sources.json）
     POST /api/system/datasources/{name}/test   数据源连通性测试
     GET  /api/system/audits                    操作审计查询（管理员）
+    GET  /api/system/alerts                    质量告警站内信（列表 + 未读数 + 及时率）
+    POST /api/system/alerts/{alert_id}/read    标记单条告警已读
+    POST /api/system/alerts/read-all           全部标记已读
     PUT  /api/auth/users/{user_id}             用户编辑（角色/科室/启停，仅管理员）
 """
 
@@ -14,12 +17,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_session
-from app.core.deps import CurrentUser, get_client_ip, require_role
+from app.core.deps import CurrentUser, get_client_ip, get_current_user, require_role
 from app.core.response import BusinessError, ok
 from app.core.security import normalize_role
 from app.schemas.auth import UserOut, UserUpdateIn
 from app.schemas.common import ApiResponse, ErrorResponse
-from app.schemas.task import DataSourceOut, RoleOut
+from app.schemas.task import AlertListOut, AlertTimeliness, DataSourceOut, RoleOut
+from app.services import alert_service
 from app.services.audit_service import list_audits, log_action
 
 router = APIRouter(prefix="/system", tags=["系统管理"])
@@ -124,6 +128,84 @@ def get_audits(
 ) -> dict:
     """审计日志查询。"""
     return ok(list_audits(session, limit=limit, action=action))
+
+
+@router.get(
+    "/alerts",
+    response_model=ApiResponse[AlertListOut],
+    summary="质量告警站内信",
+    description="返回质量告警列表（按生成时间倒序）、未读条数与通知及时率统计；"
+    "及时率 = 送达耗时 ≤ 阈值的告警数 / 告警总数。",
+    responses=ERROR_RESPONSES,
+)
+def get_alerts(
+    session: Session = Depends(get_session),
+    unread_only: bool = Query(default=False, description="仅返回未读告警"),
+    limit: int = Query(default=20, ge=1, le=200, description="返回条数"),
+    batch_date: str | None = Query(default=None, description="批次业务日期 YYYY-MM-DD，缺省返回全部"),
+    _: CurrentUser = Depends(get_current_user),
+) -> dict:
+    """告警列表（站内信通道）。"""
+    return ok(alert_service.list_alerts(session, batch_date=batch_date, unread_only=unread_only, limit=limit))
+
+
+@router.get(
+    "/alerts/timeliness",
+    response_model=ApiResponse[AlertTimeliness],
+    summary="告警通知及时率",
+    description="按批次统计告警总数、送达数、及时数与及时率（默认阈值 300 秒）。",
+    responses=ERROR_RESPONSES,
+)
+def get_alert_timeliness(
+    session: Session = Depends(get_session),
+    batch_date: str | None = Query(default=None, description="批次业务日期，缺省统计全部"),
+    _: CurrentUser = Depends(get_current_user),
+) -> dict:
+    """告警通知及时率统计。"""
+    return ok(alert_service.timeliness(session, batch_date))
+
+
+@router.post(
+    "/alerts/read-all",
+    response_model=ApiResponse[dict],
+    summary="全部告警标记已读",
+    description="把当前所有未读告警标记为已读，返回受影响条数。",
+    responses=ERROR_RESPONSES,
+)
+def read_all_alerts(
+    request: Request,
+    background: BackgroundTasks,
+    session: Session = Depends(get_session),
+    user: CurrentUser = Depends(get_current_user),
+) -> dict:
+    """全部标记已读。"""
+    affected = alert_service.mark_all_read(session)
+    log_action(
+        background,
+        user=user,
+        action="read_alerts",
+        resource="/api/system/alerts/read-all",
+        detail=f"affected={affected}",
+        client_ip=get_client_ip(request),
+    )
+    return ok({"affected": affected})
+
+
+@router.post(
+    "/alerts/{alert_id}/read",
+    response_model=ApiResponse[dict],
+    summary="标记单条告警已读",
+    description="按告警 ID 标记已读，返回受影响条数（0 表示告警不存在或已读）。",
+    responses=ERROR_RESPONSES,
+)
+def read_alert(
+    alert_id: int,
+    session: Session = Depends(get_session),
+    _: CurrentUser = Depends(get_current_user),
+) -> dict:
+    """标记单条告警已读。"""
+    affected = alert_service.mark_read(session, alert_id)
+    return ok({"alert_id": alert_id, "affected": affected})
 
 
 @router.put(

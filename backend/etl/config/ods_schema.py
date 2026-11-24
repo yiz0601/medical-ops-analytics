@@ -1,6 +1,6 @@
-"""ODS 贴源层表结构（6 张表）。
+"""ODS 贴源层表结构（7 张表）。
 
-字段与 data/ 下 6 个源 CSV 一一对应，仅追加 ETL 元数据字段：
+字段与 data/ 下 7 个源 CSV 一一对应，仅追加 ETL 元数据字段：
     etl_batch_date  批次业务日期（DATE），幂等装载的删除条件
     etl_batch_id    批次标识 B+yyyyMMdd（VARCHAR），用于批次追溯
     etl_load_time   入库时间（DATETIME）
@@ -149,6 +149,20 @@ ods_finance_excel = Table(
     Index("idx_ods_fin_batch", "etl_batch_date"),
 )
 
+# ---------------------------------------------------------------- 人事：科室人力台账
+ods_hr_staff = Table(
+    "ods_hr_staff",
+    ODS_METADATA,
+    Column("dept_code", String(16), nullable=False, comment="科室编码"),
+    Column("dept_name", String(64), comment="科室名称"),
+    Column("stat_date", Date, nullable=False, comment="台账统计日期（月末快照）"),
+    Column("doctor_cnt", Integer, comment="在岗医师数"),
+    Column("nurse_cnt", Integer, comment="在岗护士数"),
+    *_etl_columns(),
+    Index("idx_ods_hr_dept_stat", "dept_code", "stat_date"),
+    Index("idx_ods_hr_batch", "etl_batch_date"),
+)
+
 # 表名 -> Table 对象，供装载与校验逻辑遍历
 ODS_TABLES: dict[str, Table] = {
     "ods_his_outpatient_visit": ods_his_outpatient_visit,
@@ -157,6 +171,7 @@ ODS_TABLES: dict[str, Table] = {
     "ods_emr_record": ods_emr_record,
     "ods_lis_report": ods_lis_report,
     "ods_finance_excel": ods_finance_excel,
+    "ods_hr_staff": ods_hr_staff,
 }
 
 # 源 CSV 列名（与 data/mock_his、data/files 表头完全一致）
@@ -184,6 +199,9 @@ ODS_SOURCE_COLUMNS: dict[str, list[str]] = {
     "ods_finance_excel": [
         "record_id", "stat_date", "dept_code", "revenue", "drug_revenue", "consumable_revenue",
     ],
+    "ods_hr_staff": [
+        "dept_code", "dept_name", "stat_date", "doctor_cnt", "nurse_cnt",
+    ],
 }
 
 # 日期型与数值型源字段（读取时统一转换）
@@ -194,6 +212,7 @@ ODS_DATE_COLUMNS: dict[str, list[str]] = {
     "ods_emr_record": ["visit_date"],
     "ods_lis_report": ["report_date"],
     "ods_finance_excel": ["stat_date"],
+    "ods_hr_staff": ["stat_date"],
 }
 
 ODS_NUMERIC_COLUMNS: dict[str, list[str]] = {
@@ -203,6 +222,7 @@ ODS_NUMERIC_COLUMNS: dict[str, list[str]] = {
     "ods_emr_record": [],
     "ods_lis_report": [],
     "ods_finance_excel": ["revenue", "drug_revenue", "consumable_revenue"],
+    "ods_hr_staff": ["doctor_cnt", "nurse_cnt"],
 }
 
 ODS_INT_COLUMNS: dict[str, list[str]] = {
@@ -212,4 +232,5 @@ ODS_INT_COLUMNS: dict[str, list[str]] = {
     "ods_emr_record": [],
     "ods_lis_report": [],
     "ods_finance_excel": [],
+    "ods_hr_staff": ["doctor_cnt", "nurse_cnt"],
 }

@@ -6,11 +6,22 @@
  */
 import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import * as echarts from 'echarts/core'
-import { BarChart, HeatmapChart, LineChart, PieChart } from 'echarts/charts'
 import {
+  BarChart,
+  FunnelChart,
+  GaugeChart,
+  HeatmapChart,
+  LineChart,
+  PieChart,
+  RadarChart,
+  ScatterChart
+} from 'echarts/charts'
+import {
+  DataZoomComponent,
   GridComponent,
   LegendComponent,
   MarkLineComponent,
+  RadarComponent,
   TitleComponent,
   TooltipComponent,
   VisualMapComponent
@@ -22,12 +33,18 @@ echarts.use([
   BarChart,
   PieChart,
   HeatmapChart,
+  ScatterChart,
+  GaugeChart,
+  RadarChart,
+  FunnelChart,
   GridComponent,
   TooltipComponent,
   LegendComponent,
   TitleComponent,
   VisualMapComponent,
   MarkLineComponent,
+  DataZoomComponent,
+  RadarComponent,
   CanvasRenderer
 ])
 

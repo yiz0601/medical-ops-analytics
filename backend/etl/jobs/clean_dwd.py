@@ -260,6 +260,23 @@ def _pipeline_finance(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _pipeline_hr_staff(df: pd.DataFrame) -> pd.DataFrame:
+    """人事人力台账：去重 + 科室层级/上级编码挂接 + 卫技人员合计。"""
+    from etl.config.dim_seed import DEPARTMENT_ROWS
+
+    df = dedupe(df, ["dept_code", "stat_date"])
+    parent_map = {row[0]: row[2] for row in DEPARTMENT_ROWS}
+    level_map = {row[0]: row[3] for row in DEPARTMENT_ROWS}
+    df = standardize_codes(df, DEPT_NAME, "dept_code", new_column="dept_name", default="未知科室")
+    df["dept_parent_code"] = df["dept_code"].map(lambda code: parent_map.get(str(code)))
+    df["dept_level"] = df["dept_code"].map(lambda code: int(level_map.get(str(code)) or 2))
+    doctor = pd.to_numeric(df["doctor_cnt"], errors="coerce").fillna(0)
+    nurse = pd.to_numeric(df["nurse_cnt"], errors="coerce").fillna(0)
+    df["staff_total"] = (doctor + nurse).astype(int)
+    df["stat_ym"] = pd.to_datetime(df["stat_date"], errors="coerce").dt.strftime("%Y-%m")
+    return df
+
+
 # DWD 表 -> (ODS 来源表, 加工流水线, 业务主键)
 PIPELINES: dict[str, tuple[str, Any, tuple[str, ...]]] = {
     "dwd_outpatient_visit_detail": ("ods_his_outpatient_visit", _pipeline_outpatient, ("visit_id",)),
@@ -268,6 +285,7 @@ PIPELINES: dict[str, tuple[str, Any, tuple[str, ...]]] = {
     "dwd_emr_record_detail": ("ods_emr_record", _pipeline_emr, ("record_id",)),
     "dwd_lis_report_detail": ("ods_lis_report", _pipeline_lis, ("report_id",)),
     "dwd_finance_daily_detail": ("ods_finance_excel", _pipeline_finance, ("record_id",)),
+    "dwd_hr_staff_detail": ("ods_hr_staff", _pipeline_hr_staff, ("dept_code", "stat_date")),
 }
 
 

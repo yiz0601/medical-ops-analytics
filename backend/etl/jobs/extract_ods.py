@@ -7,8 +7,9 @@
     extract_lis(start_date, end_date)              抽取 LIS 检验报告
     extract_emr(start_date, end_date)              抽取 EMR 病历
     extract_finance_excel(path)                    解析财务 Excel/CSV
+    extract_hr_staff(start_date, end_date)         抽取人事科室人力台账
     load_to_ods(df, table, batch_date)             按批次日期先删后插（幂等）
-    run_extract_all(start_date, end_date)          串跑全部 6 个源并装载
+    run_extract_all(start_date, end_date)          串跑全部 7 个源并装载
     verify_ods_rows(batch_date)                    核对 ODS 行数与基线
 
 装载约定：每张表额外写入 etl_batch_date / etl_batch_id / etl_load_time，
@@ -37,6 +38,7 @@ SOURCE_DATE_COLUMN: dict[str, str] = {
     "his_charge": "fee_date",
     "emr_record": "visit_date",
     "lis_report": "report_date",
+    "hr_staff": "stat_date",
 }
 
 
@@ -98,6 +100,11 @@ def extract_emr(start_date: str, end_date: str) -> pd.DataFrame:
     return _filter_period(_read_source_csv("emr_record"), "visit_date", start_date, end_date)
 
 
+def extract_hr_staff(start_date: str, end_date: str) -> pd.DataFrame:
+    """抽取人事系统科室人力台账（按 stat_date / 台账月末快照过滤）。"""
+    return _filter_period(_read_source_csv("hr_staff"), "stat_date", start_date, end_date)
+
+
 def extract_finance_excel(path: str | None = None) -> pd.DataFrame:
     """解析财务 Excel/CSV 文件；path 为空时使用数据源注册的文件路径。"""
     if path is None:
@@ -144,6 +151,7 @@ EXTRACTORS: dict[str, tuple[str, Any]] = {
     "ods_his_charge_detail": ("his_charge", extract_his_charge),
     "ods_emr_record": ("emr_record", extract_emr),
     "ods_lis_report": ("lis_report", extract_lis),
+    "ods_hr_staff": ("hr_staff", extract_hr_staff),
 }
 
 

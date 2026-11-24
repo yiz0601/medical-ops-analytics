@@ -1,6 +1,7 @@
-"""管理驾驶舱与导出接口（阶段四 · 步骤 1-3、1-5）。
+"""管理驾驶舱、科室运营看板与导出接口（阶段四 · 步骤 1-3、1-5）。
 
     GET /api/dashboard/overview   聚合返回 KPI、趋势与科室排行
+    GET /api/dashboard/dept       科室运营看板：单科室全指标 + 趋势 + 收入构成 + 名次 + 人力快照
     GET /api/dashboard/export     将查询结果导出为 xlsx / pdf 文件流
 """
 
@@ -14,7 +15,7 @@ from app.core.db import get_session
 from app.core.deps import CurrentUser, get_client_ip, get_current_user
 from app.core.response import BusinessError, ok
 from app.schemas.common import ApiResponse, ErrorResponse
-from app.schemas.metric import DashboardOverviewOut
+from app.schemas.metric import DashboardOverviewOut, DeptBoardOut
 from app.services import export_service, indicator_service
 from app.services.audit_service import log_action
 
@@ -65,6 +66,38 @@ def get_overview(
         client_ip=get_client_ip(request),
     )
     return ok(overview)
+
+
+@router.get(
+    "/dept",
+    response_model=ApiResponse[DeptBoardOut],
+    summary="科室运营看板",
+    description="返回单科室的核心指标卡片、床位使用率/平均住院日等趋势、费别收入构成、"
+    "科室收入横向名次与人事系统人力快照；科室用户仅可查看本科室。",
+    responses=ERROR_RESPONSES,
+)
+def get_dept_board(
+    request: Request,
+    background: BackgroundTasks,
+    dept: str | None = Query(default=None, description="科室编码（如 HN）；科室用户缺省为本科室"),
+    start_date: str | None = Query(default=None, description="统计开始日期 YYYY-MM-DD"),
+    end_date: str | None = Query(default=None, description="统计结束日期 YYYY-MM-DD"),
+    granularity: str = Query(default="month", description="粒度：day / month / period"),
+    session: Session = Depends(get_session),
+    user: CurrentUser = Depends(get_current_user),
+) -> dict:
+    """获取科室运营看板数据。"""
+    date_range = [start_date, end_date] if start_date and end_date else None
+    board = indicator_service.get_dept_board(session, dept, date_range, granularity, user=user)
+    log_action(
+        background,
+        user=user,
+        action="query",
+        resource="/api/dashboard/dept",
+        detail=f"dept={board['dept_code']} period={board['period']} kpis={len(board['kpis'])}",
+        client_ip=get_client_ip(request),
+    )
+    return ok(board)
 
 
 @router.get(

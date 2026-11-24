@@ -39,6 +39,31 @@
       </div>
     </div>
 
+    <!-- 运营质量单值仪表 + 收入构成漏斗 -->
+    <div class="moa-grid cols-2">
+      <div class="moa-card">
+        <h3 class="moa-card-title">床位使用率达成（M11）</h3>
+        <GaugeChart
+          :value="kpiValue('M11')"
+          name="床位使用率"
+          unit="%"
+          :max="120"
+          :thresholds="[{ max: 100, color: '#2fa36b' }, { max: 999, color: '#e6a23c' }]"
+          :loading="state.loading"
+        />
+      </div>
+      <div class="moa-card">
+        <h3 class="moa-card-title">收入构成（漏斗：药品 / 耗材）</h3>
+        <FunnelChart :items="incomeFunnel" unit="元" :loading="state.loading" />
+      </div>
+    </div>
+
+    <!-- 科室 × 月 收入热力图 -->
+    <div class="moa-card">
+      <h3 class="moa-card-title">科室 × 月收入热力图（M16）</h3>
+      <HeatMap :data="revenueHeat" unit="元" :loading="state.loading" />
+    </div>
+
     <!-- 明细 -->
     <div class="moa-card">
       <h3 class="moa-card-title">核心 KPI 明细</h3>
@@ -83,16 +108,45 @@ import { useRouter } from 'vue-router'
 import KpiCard from '@/components/charts/KpiCard.vue'
 import TrendChart from '@/components/charts/TrendChart.vue'
 import RankBar from '@/components/charts/RankBar.vue'
-import { dashboardApi } from '@/api/modules'
-import { formatNumber } from '@/views/useThemeView'
+import GaugeChart from '@/components/charts/GaugeChart.vue'
+import FunnelChart from '@/components/charts/FunnelChart.vue'
+import HeatMap from '@/components/charts/HeatMap.vue'
+import { dashboardApi, themeMetrics } from '@/api/modules'
+import { formatNumber, deptName } from '@/views/useThemeView'
 
 const router = useRouter()
 
 const filters = reactive({ granularity: 'month', startDate: '2025-04-01', endDate: '2025-06-30' })
-const state = reactive({ loading: false, error: '', kpis: [], trend: [], deptRank: [], pending: [], period: [], deptScope: 'ALL' })
+const state = reactive({
+  loading: false,
+  error: '',
+  kpis: [],
+  trend: [],
+  deptRank: [],
+  composition: [],
+  revenueMonth: [],
+  pending: [],
+  period: [],
+  deptScope: 'ALL'
+})
 
 const rankData = computed(() =>
   state.deptRank.map((item) => ({ name: item.dept_name || item.dept_code, dept_code: item.dept_code, value: item.metric_value }))
+)
+
+/** 取指定指标的 KPI 值（用于仪表盘） */
+function kpiValue(code) {
+  const row = state.kpis.find((item) => item.metric_code === code)
+  return row?.metric_value ?? null
+}
+
+/** 收入构成漏斗（药品 / 耗材，来自收入主题接口） */
+const INCOME_LABELS = { M17: '药品收入', M18: '耗材收入', M21: '检查检验占比', M22: '医疗服务性占比' }
+const incomeFunnel = computed(() =>
+  state.composition.map((item) => ({
+    name: INCOME_LABELS[item.metric_code] || item.metric_name || item.metric_code,
+    value: item.metric_value
+  }))
 )
 
 function toCard(kpi) {
@@ -122,10 +176,65 @@ async function loadOverview() {
     state.pending = data.pending_metrics || []
     state.period = data.period || []
     state.deptScope = data.dept_scope || 'ALL'
+    state.composition = await loadComposition()
+    state.revenueMonth = await loadRevenueMonth()
   } catch (error) {
     state.error = error.message || '加载失败'
   } finally {
     state.loading = false
+  }
+}
+
+/** 收入构成（药品/耗材/检查检验/医疗服务性，经收入主题接口取全期口径） */
+async function loadComposition() {
+  try {
+    const data = await themeMetrics('revenue', {
+      metrics: 'M17,M18,M21,M22',
+      granularity: 'period',
+      start_date: filters.startDate,
+      end_date: filters.endDate,
+      ...(state.deptScope && state.deptScope !== 'ALL' ? { dims: state.deptScope } : {})
+    })
+    return (data.series || [])
+      .map((item) => {
+        const latest = (item.points || [])[item.points.length - 1]
+        return latest ? { ...latest, unit: item.unit } : null
+      })
+      .filter(Boolean)
+  } catch (error) {
+    return []
+  }
+}
+
+/** 科室 × 月 收入热力图（月度口径，全院或本科室） */
+const revenueHeat = computed(() => {
+  const series = state.revenueMonth || []
+  const cells = []
+  series.forEach((item) => {
+    if (item.dim_value === 'ALL') return
+    ;(item.points || []).forEach((point) => {
+      if (point.metric_value === null || point.metric_value === undefined) return
+      cells.push({
+        x: deptName(item.dim_value),
+        y: String(point.stat_date).slice(0, 7),
+        value: Number(point.metric_value)
+      })
+    })
+  })
+  return cells
+})
+
+async function loadRevenueMonth() {
+  try {
+    const data = await themeMetrics('revenue', {
+      metrics: 'M16',
+      granularity: 'month',
+      start_date: filters.startDate,
+      end_date: filters.endDate
+    })
+    return data.series || []
+  } catch (error) {
+    return []
   }
 }
 

@@ -9,8 +9,9 @@
     check_reconcile(ods_table, dwd_table)   ODS 与 DWD 行数对账
 
 报告入口 generate_quality_report(batch_date)：汇总全部规则结果，计算质量评分与
-字段覆盖率，输出告警清单（BLOCK 阻断 / WARN 告警），并落盘
-backend/etl/logs/quality_report_YYYYMMDD.json。
+字段覆盖率，输出告警清单（BLOCK 阻断 / WARN 告警），落盘
+backend/etl/logs/quality_report_YYYYMMDD.json，并通过 `etl.jobs.alert_notify`
+把告警推送到站内信表 `sys_alert`（含送达耗时与及时率）。
 """
 
 from __future__ import annotations
@@ -35,6 +36,16 @@ from etl.config.settings import (
 )
 
 PASS, WARN, FAIL = "PASS", "WARN", "FAIL"
+
+
+class QualityBlockedError(RuntimeError):
+    """质检存在 BLOCK 级规则失败：阻断下游发布并已推送站内信告警。"""
+
+    def __init__(self, batch_date: Any, blocking_alerts: Sequence[dict[str, Any]]) -> None:
+        codes = ", ".join(str(a.get("rule_code")) for a in blocking_alerts) or "-"
+        super().__init__(f"批次 {batch_date} 存在阻断级质量规则失败（{codes}），已阻断下游发布并推送告警")
+        self.batch_date = batch_date
+        self.blocking_alerts = list(blocking_alerts)
 
 
 def _rate(total: int, failed: int) -> float:
@@ -239,6 +250,7 @@ KEY_FIELDS: dict[str, list[str]] = {
     "ods_emr_record": ["record_id", "visit_id", "disease_code"],
     "ods_lis_report": ["report_id", "visit_id", "item_name", "result_text"],
     "ods_finance_excel": ["record_id", "stat_date", "dept_code", "revenue"],
+    "ods_hr_staff": ["dept_code", "stat_date", "doctor_cnt", "nurse_cnt"],
 }
 
 # 已配置规则覆盖的字段（覆盖率分子）
@@ -249,6 +261,7 @@ COVERED_FIELDS: dict[str, list[str]] = {
     "ods_emr_record": ["record_id", "visit_id", "disease_code"],
     "ods_lis_report": ["report_id", "visit_id", "item_name", "result_text"],
     "ods_finance_excel": ["record_id", "stat_date", "dept_code", "revenue"],
+    "ods_hr_staff": ["dept_code", "stat_date", "doctor_cnt", "nurse_cnt"],
 }
 
 GENDER_ENUM = {"type": "enum", "values": ["男", "女"]}
@@ -263,6 +276,7 @@ RECONCILE_PAIRS = [
     ("ods_emr_record", "dwd_emr_record_detail"),
     ("ods_lis_report", "dwd_lis_report_detail"),
     ("ods_finance_excel", "dwd_finance_daily_detail"),
+    ("ods_hr_staff", "dwd_hr_staff_detail"),
 ]
 
 
@@ -273,7 +287,7 @@ def run_all_rules(batch_date: date | str | None = None, *, engine: Engine | None
     results: list[dict[str, Any]] = []
     seq = 0
 
-    # 1) 主键唯一性（6 张表）
+    # 1) 主键唯一性（7 张表）
     pk_map = {
         "ods_his_outpatient_visit": ["visit_id"],
         "ods_his_inpatient_visit": ["visit_id"],
@@ -281,6 +295,7 @@ def run_all_rules(batch_date: date | str | None = None, *, engine: Engine | None
         "ods_emr_record": ["record_id"],
         "ods_lis_report": ["report_id"],
         "ods_finance_excel": ["record_id"],
+        "ods_hr_staff": ["dept_code", "stat_date"],
     }
     for table, keys in pk_map.items():
         seq += 1
@@ -369,8 +384,16 @@ def generate_quality_report(
     *,
     engine: Engine | None = None,
     output_dir: str | None = None,
+    notify: bool = True,
+    raise_on_block: bool = False,
 ) -> dict[str, Any]:
-    """汇总规则结果，计算评分与覆盖率，落盘 JSON 并输出告警。"""
+    """汇总规则结果，计算评分与覆盖率，落盘 JSON；按需推送站内信告警并输出。
+
+    * `notify=True`（默认）：把告警写入 `sys_alert` 站内信表，并在报告 `summary.notify`
+      中给出送达条数与通知及时率（任务书「异常数据告警通知及时率 100%」的可核对依据）
+    * `raise_on_block=True`：存在 BLOCK 级规则失败时抛出 `QualityBlockedError`，
+      由调度链阻断下游发布（任务书「异常时阻断下游发布并告警」）
+    """
     bd = normalize_batch_date(batch_date)
     eng = engine or get_engine()
     results = run_all_rules(bd, engine=eng)
@@ -421,6 +444,15 @@ def generate_quality_report(
         "results": results,
     }
 
+    # 站内信告警推送（含送达耗时与及时率），满足「异常数据告警通知」要求
+    notify_summary: dict[str, Any] = {"channel": "", "total": 0, "delivered": 0, "timely": 0, "timeliness_rate": 100.0}
+    if notify:
+        from etl.jobs.alert_notify import publish_alerts
+
+        notify_summary = publish_alerts(alerts, bd, engine=eng)
+    report["summary"]["notify"] = notify_summary
+    report["summary"]["alert_total"] = notify_summary.get("total", 0)
+
     out_dir = LOG_DIR if output_dir is None else __import__("pathlib").Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     report_file = out_dir / f"quality_report_{bd:%Y%m%d}.json"
@@ -437,6 +469,8 @@ def generate_quality_report(
         print("[质量] 无告警")
     if report["summary"]["blocking"]:
         print("[质量] 存在阻断级规则失败，下游发布应中止并通知数据责任人")
+    if raise_on_block and report["summary"]["blocking"]:
+        raise QualityBlockedError(bd, [a for a in alerts if a["level"] == "BLOCK" and a["status"] != PASS])
     return report
 
 

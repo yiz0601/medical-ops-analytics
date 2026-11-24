@@ -74,6 +74,52 @@ class DashboardOverviewOut(BaseModel):
     pending_metrics: list[str] = Field(default_factory=list, description="数据源待补充的指标编码")
 
 
+class DeptTrendOut(BaseModel):
+    """科室看板的单指标趋势。"""
+
+    metric_code: str
+    metric_name: str = ""
+    unit: str = ""
+    points: list[IndicatorSeriesPoint] = Field(default_factory=list)
+
+
+class DeptRankOut(BaseModel):
+    """科室横向排名的当前位次。"""
+
+    metric_code: str = Field(default="M16", description="排名依据指标")
+    metric_name: str = ""
+    dept_code: str = ""
+    rank: int | None = Field(default=None, description="该科室名次（1 起）")
+    total_depts: int = Field(default=0, description="参与排名的科室数")
+    metric_value: float | None = None
+    unit: str = ""
+
+
+class DeptStaffOut(BaseModel):
+    """科室人力快照（来自人事系统人力台账）。"""
+
+    stat_date: str | None = Field(default=None, description="台账统计日期")
+    doctor_cnt: int = Field(default=0, description="在岗医师数")
+    nurse_cnt: int = Field(default=0, description="在岗护士数")
+    staff_total: int = Field(default=0, description="卫技人员合计")
+    source: str = Field(default="HR 人力台账", description="数据来源")
+
+
+class DeptBoardOut(BaseModel):
+    """科室运营看板（单科室全指标视图）。"""
+
+    dept_code: str
+    dept_name: str = ""
+    period: list[str] = Field(default_factory=list, description="[start_date, end_date]")
+    granularity: str = "month"
+    kpis: list[IndicatorSeriesPoint] = Field(default_factory=list, description="科室核心指标卡片")
+    trends: list[DeptTrendOut] = Field(default_factory=list, description="床位使用率 / 平均住院日等趋势")
+    composition: list[IndicatorSeriesPoint] = Field(default_factory=list, description="收入构成（费别口径）")
+    rank: DeptRankOut | None = Field(default=None, description="科室收入横向名次")
+    staff: DeptStaffOut = Field(default_factory=DeptStaffOut, description="科室人力快照")
+    pending_metrics: list[str] = Field(default_factory=list, description="数据源待补充的指标编码")
+
+
 class ExportOut(BaseModel):
     """导出结果。"""
 

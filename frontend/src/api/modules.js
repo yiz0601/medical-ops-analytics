@@ -16,6 +16,7 @@ export const authApi = {
 // ---------------------------------------------------------------- 驾驶舱与主题
 export const dashboardApi = {
   overview: (params) => request.get('/dashboard/overview', { params }),
+  dept: (params) => request.get('/dashboard/dept', { params }),
   exportFile: (params) =>
     request.get('/dashboard/export', { params, responseType: 'blob' })
 }
@@ -37,7 +38,11 @@ export const systemApi = {
   roles: () => request.get('/system/roles'),
   dataSources: () => request.get('/system/datasources'),
   testDataSource: (name) => request.post(`/system/datasources/${name}/test`),
-  audits: (params) => request.get('/system/audits', { params })
+  audits: (params) => request.get('/system/audits', { params }),
+  alerts: (params) => request.get('/system/alerts', { params }),
+  alertTimeliness: (params) => request.get('/system/alerts/timeliness', { params }),
+  readAlert: (alertId) => request.post(`/system/alerts/${alertId}/read`),
+  readAllAlerts: () => request.post('/system/alerts/read-all')
 }
 
 // ---------------------------------------------------------------- 智能分析

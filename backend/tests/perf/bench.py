@@ -57,6 +57,7 @@ def collect_endpoints(token: str | None = None, base_url: str = DEFAULT_BASE_URL
     """构造压测请求集合（覆盖驾驶舱、指标、多维与分析接口）。"""
     endpoints = [
         {"name": "驾驶舱总览", "method": "GET", "url": f"{base_url}/api/dashboard/overview{PERIOD}"},
+        {"name": "科室看板", "method": "GET", "url": f"{base_url}/api/dashboard/dept?dept=HN{PERIOD}&granularity=month"},
         {"name": "门诊指标", "method": "GET", "url": f"{base_url}/api/outpatient/metrics{PERIOD}"},
         {"name": "住院指标", "method": "GET", "url": f"{base_url}/api/inpatient/metrics{PERIOD}"},
         {"name": "收入指标", "method": "GET", "url": f"{base_url}/api/revenue/metrics{PERIOD}"},
@@ -64,6 +65,7 @@ def collect_endpoints(token: str | None = None, base_url: str = DEFAULT_BASE_URL
         {"name": "多维查询", "method": "GET", "url": f"{base_url}/api/inpatient/metrics?metrics=M08,M11&dims=EK,HN&granularity=month"},
         {"name": "任务状态", "method": "GET", "url": f"{base_url}/api/task/status"},
         {"name": "质量报告", "method": "GET", "url": f"{base_url}/api/quality/report"},
+        {"name": "告警站内信", "method": "GET", "url": f"{base_url}/api/system/alerts?limit=5"},
         {"name": "智能问数", "method": "POST", "url": f"{base_url}/api/llm/query", "payload": {"question": "上月呼吸科床位使用率趋势如何"}},
     ]
     for item in endpoints:

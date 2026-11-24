@@ -12,7 +12,7 @@ CREATE DATABASE IF NOT EXISTS medical_ops
 
 USE medical_ops;
 
--- 说明：字段与 data/ 下 6 个源 CSV 一一对应，仅追加 3 个 ETL 元数据字段：
+-- 说明：字段与 data/ 下 7 个源 CSV 一一对应，仅追加 3 个 ETL 元数据字段：
 --       etl_batch_date（批次业务日期，幂等删除键）、etl_batch_id（批次标识）、etl_load_time（入库时间）
 
 -- ---------------------------------------------------------------- ods_his_outpatient_visit
@@ -30,7 +30,10 @@ CREATE TABLE IF NOT EXISTS ods_his_outpatient_visit (
 	fee_amount NUMERIC(12, 2) COMMENT '就诊费用（登记口径）',
 	etl_batch_date DATE NOT NULL COMMENT '批次业务日期（幂等删除键）',
 	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
-	etl_load_time DATETIME NOT NULL COMMENT '入库时间'
+	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
+	KEY idx_ods_op_batch (etl_batch_date),
+	KEY idx_ods_op_dept (dept_code),
+	KEY idx_ods_op_visit_date (visit_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------- ods_his_inpatient_visit
@@ -53,7 +56,11 @@ CREATE TABLE IF NOT EXISTS ods_his_inpatient_visit (
 	disease_code VARCHAR(16) COMMENT 'ICD-10 主诊断编码',
 	etl_batch_date DATE NOT NULL COMMENT '批次业务日期（幂等删除键）',
 	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
-	etl_load_time DATETIME NOT NULL COMMENT '入库时间'
+	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
+	KEY idx_ods_ip_admit_date (admit_date),
+	KEY idx_ods_ip_batch (etl_batch_date),
+	KEY idx_ods_ip_dept (dept_code),
+	KEY idx_ods_ip_discharge_date (discharge_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------- ods_his_charge_detail
@@ -69,7 +76,11 @@ CREATE TABLE IF NOT EXISTS ods_his_charge_detail (
 	amount NUMERIC(12, 2) COMMENT '金额',
 	etl_batch_date DATE NOT NULL COMMENT '批次业务日期（幂等删除键）',
 	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
-	etl_load_time DATETIME NOT NULL COMMENT '入库时间'
+	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
+	KEY idx_ods_chg_batch (etl_batch_date),
+	KEY idx_ods_chg_dept (dept_code),
+	KEY idx_ods_chg_fee_date (fee_date),
+	KEY idx_ods_chg_visit (visit_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------- ods_emr_record
@@ -83,7 +94,9 @@ CREATE TABLE IF NOT EXISTS ods_emr_record (
 	disease_code VARCHAR(16) COMMENT 'ICD-10 主诊断编码',
 	etl_batch_date DATE NOT NULL COMMENT '批次业务日期（幂等删除键）',
 	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
-	etl_load_time DATETIME NOT NULL COMMENT '入库时间'
+	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
+	KEY idx_ods_emr_batch (etl_batch_date),
+	KEY idx_ods_emr_visit (visit_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------- ods_lis_report
@@ -96,7 +109,9 @@ CREATE TABLE IF NOT EXISTS ods_lis_report (
 	report_date DATE COMMENT '报告日期',
 	etl_batch_date DATE NOT NULL COMMENT '批次业务日期（幂等删除键）',
 	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
-	etl_load_time DATETIME NOT NULL COMMENT '入库时间'
+	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
+	KEY idx_ods_lis_batch (etl_batch_date),
+	KEY idx_ods_lis_visit (visit_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------- ods_finance_excel
@@ -109,5 +124,22 @@ CREATE TABLE IF NOT EXISTS ods_finance_excel (
 	consumable_revenue NUMERIC(14, 2) COMMENT '耗材收入',
 	etl_batch_date DATE NOT NULL COMMENT '批次业务日期（幂等删除键）',
 	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
-	etl_load_time DATETIME NOT NULL COMMENT '入库时间'
+	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
+	KEY idx_ods_fin_batch (etl_batch_date),
+	KEY idx_ods_fin_dept (dept_code),
+	KEY idx_ods_fin_stat_date (stat_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------------------------------------------------------------- ods_hr_staff
+CREATE TABLE IF NOT EXISTS ods_hr_staff (
+	dept_code VARCHAR(16) NOT NULL COMMENT '科室编码',
+	dept_name VARCHAR(64) COMMENT '科室名称',
+	stat_date DATE NOT NULL COMMENT '台账统计日期（月末快照）',
+	doctor_cnt INTEGER COMMENT '在岗医师数',
+	nurse_cnt INTEGER COMMENT '在岗护士数',
+	etl_batch_date DATE NOT NULL COMMENT '批次业务日期（幂等删除键）',
+	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
+	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
+	KEY idx_ods_hr_batch (etl_batch_date),
+	KEY idx_ods_hr_dept_stat (dept_code, stat_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

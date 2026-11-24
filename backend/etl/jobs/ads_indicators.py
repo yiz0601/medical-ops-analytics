@@ -72,6 +72,44 @@ def _period_end(dates: pd.Series, granularity: str, end_date: date) -> pd.Series
     return pd.Series([end_date] * len(series))
 
 
+def _staff_map(engine: Engine, end_date: date | str | None = None) -> dict[str, dict[str, Any]]:
+    """科室人力映射：优先取人事系统人力台账（DWD 接入），缺失时回退科室维表维护值。
+
+    人力数据源（sources.json 中的 `hr_staff`，系统类型 HR）经 ODS/DWD 落地后在此取数，
+    支撑 M28 医师人均门诊人次与 M29 床护比；台账按 stat_date 取期末快照（≤ 统计期末）。
+    """
+    try:
+        from etl.config.dwd_schema import dwd_hr_staff_detail
+
+        frame = read_table_df(engine, dwd_hr_staff_detail)
+    except Exception:  # noqa: BLE001 - 表未创建或读取失败时回退维表
+        frame = pd.DataFrame()
+    if frame is not None and not frame.empty:
+        frame = frame.copy()
+        frame["stat_date"] = pd.to_datetime(frame["stat_date"], errors="coerce").dt.date
+        if end_date is not None:
+            frame = frame.loc[frame["stat_date"] <= normalize_batch_date(end_date)]
+        if not frame.empty:
+            latest = frame.sort_values("stat_date").groupby("dept_code", as_index=False).last()
+            return {
+                str(row["dept_code"]): {
+                    "doctor_cnt": int(row.get("doctor_cnt") or 0),
+                    "nurse_cnt": int(row.get("nurse_cnt") or 0),
+                    "dept_level": int(row.get("dept_level") or 2),
+                }
+                for row in latest.to_dict("records")
+            }
+    staff = dept_map(engine)
+    return {
+        str(code): {
+            "doctor_cnt": int(row.get("doctor_cnt") or 0),
+            "nurse_cnt": int(row.get("nurse_cnt") or 0),
+            "dept_level": int(row.get("dept_level") or 2),
+        }
+        for code, row in staff.items()
+    }
+
+
 def _prepared(
     start_date: str,
     end_date: str,
@@ -106,7 +144,7 @@ def _prepared(
     day_counts = day_counts.rename(columns={"dept_code": "dim_value", "stat_date": "stat_days"})
     dept_grp = dept_grp.merge(day_counts, on=["dim_value", "period_date", "granularity"], how="left")
 
-    staff = dept_map(eng)
+    staff = _staff_map(eng, end)
     dept_grp["staff_doctor"] = dept_grp["dim_value"].map(lambda c: int(staff.get(str(c), {}).get("doctor_cnt") or 0))
     dept_grp["staff_nurse"] = dept_grp["dim_value"].map(lambda c: int(staff.get(str(c), {}).get("nurse_cnt") or 0))
 

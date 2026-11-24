@@ -102,8 +102,20 @@ def log_write(
         fp.write(json.dumps(record, ensure_ascii=False) + "\n")
     icon = {"SUCCESS": "✔", "FAILED": "✘", "SKIPPED": "→"}.get(status, "·")
     tail = f"  error={error}" if error else ""
-    print(f"  {icon} [{record['log_time']}] {name:<14} {status:<8} rows={record['rows']:>6} cost={record['cost_ms']:>9.1f}ms{tail}")
+    _safe_print(
+        f"  {icon} [{record['log_time']}] {name:<14} {status:<8} "
+        f"rows={record['rows']:>6} cost={record['cost_ms']:>9.1f}ms{tail}"
+    )
     return record
+
+
+def _safe_print(text: str) -> None:
+    """跨平台安全打印：控制台编码不支持符号（如 Windows GBK 下的 ✔/✘）时降级为 ASCII。"""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        fallback = text.replace("✔", "[OK]").replace("✘", "[FAIL]").replace("→", "->").replace("·", ".")
+        print(fallback.encode("ascii", errors="replace").decode("ascii"))
 
 
 # ---------------------------------------------------------------- 步骤 2-3：执行

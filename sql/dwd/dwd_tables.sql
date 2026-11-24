@@ -51,7 +51,12 @@ CREATE TABLE IF NOT EXISTS dwd_visit_detail (
 	etl_batch_date DATE NOT NULL COMMENT '批次业务日期',
 	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
 	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
-	PRIMARY KEY (visit_id)
+	PRIMARY KEY (visit_id),
+	KEY idx_dwd_visit_batch (etl_batch_date),
+	KEY idx_dwd_visit_date (visit_date),
+	KEY idx_dwd_visit_dept (dept_code),
+	KEY idx_dwd_visit_disease (disease_code),
+	KEY idx_dwd_visit_type (visit_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------- dwd_outpatient_visit_detail
@@ -74,7 +79,11 @@ CREATE TABLE IF NOT EXISTS dwd_outpatient_visit_detail (
 	etl_batch_date DATE NOT NULL COMMENT '批次业务日期',
 	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
 	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
-	PRIMARY KEY (visit_id)
+	PRIMARY KEY (visit_id),
+	KEY idx_dwd_op_batch (etl_batch_date),
+	KEY idx_dwd_op_date (visit_date),
+	KEY idx_dwd_op_dept (dept_code),
+	KEY idx_dwd_op_patient (patient_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------- dwd_inpatient_visit_detail
@@ -103,7 +112,12 @@ CREATE TABLE IF NOT EXISTS dwd_inpatient_visit_detail (
 	etl_batch_date DATE NOT NULL COMMENT '批次业务日期',
 	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
 	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
-	PRIMARY KEY (visit_id)
+	PRIMARY KEY (visit_id),
+	KEY idx_dwd_ip_admit (admit_date),
+	KEY idx_dwd_ip_batch (etl_batch_date),
+	KEY idx_dwd_ip_dept (dept_code),
+	KEY idx_dwd_ip_discharge (discharge_date),
+	KEY idx_dwd_ip_disease (disease_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------- dwd_charge_detail
@@ -129,7 +143,12 @@ CREATE TABLE IF NOT EXISTS dwd_charge_detail (
 	etl_batch_date DATE NOT NULL COMMENT '批次业务日期',
 	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
 	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
-	PRIMARY KEY (charge_id)
+	PRIMARY KEY (charge_id),
+	KEY idx_dwd_chg_batch (etl_batch_date),
+	KEY idx_dwd_chg_class (fee_class),
+	KEY idx_dwd_chg_date (fee_date),
+	KEY idx_dwd_chg_dept (dept_code),
+	KEY idx_dwd_chg_visit (visit_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------- dwd_emr_record_detail
@@ -147,7 +166,10 @@ CREATE TABLE IF NOT EXISTS dwd_emr_record_detail (
 	etl_batch_date DATE NOT NULL COMMENT '批次业务日期',
 	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
 	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
-	PRIMARY KEY (record_id)
+	PRIMARY KEY (record_id),
+	KEY idx_dwd_emr_batch (etl_batch_date),
+	KEY idx_dwd_emr_disease (disease_code),
+	KEY idx_dwd_emr_visit (visit_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------- dwd_lis_report_detail
@@ -162,7 +184,10 @@ CREATE TABLE IF NOT EXISTS dwd_lis_report_detail (
 	etl_batch_date DATE NOT NULL COMMENT '批次业务日期',
 	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
 	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
-	PRIMARY KEY (report_id)
+	PRIMARY KEY (report_id),
+	KEY idx_dwd_lis_batch (etl_batch_date),
+	KEY idx_dwd_lis_flag (result_flag),
+	KEY idx_dwd_lis_visit (visit_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------- dwd_finance_daily_detail
@@ -178,5 +203,27 @@ CREATE TABLE IF NOT EXISTS dwd_finance_daily_detail (
 	etl_batch_date DATE NOT NULL COMMENT '批次业务日期',
 	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
 	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
-	PRIMARY KEY (record_id)
+	PRIMARY KEY (record_id),
+	KEY idx_dwd_fin_batch (etl_batch_date),
+	KEY idx_dwd_fin_date (stat_date),
+	KEY idx_dwd_fin_dept (dept_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------------------------------------------------------------- dwd_hr_staff_detail
+CREATE TABLE IF NOT EXISTS dwd_hr_staff_detail (
+	dept_code VARCHAR(16) NOT NULL COMMENT '科室编码',
+	stat_date DATE NOT NULL COMMENT '台账统计日期',
+	dept_name VARCHAR(64) COMMENT '科室名称',
+	dept_parent_code VARCHAR(16) COMMENT '上级科室系编码',
+	dept_level INTEGER COMMENT '科室层级：1 科室系 / 2 临床科室',
+	doctor_cnt INTEGER COMMENT '在岗医师数',
+	nurse_cnt INTEGER COMMENT '在岗护士数',
+	staff_total INTEGER COMMENT '卫生技术人员合计（医师 + 护士）',
+	stat_ym VARCHAR(7) COMMENT '台账年月 YYYY-MM',
+	etl_batch_date DATE NOT NULL COMMENT '批次业务日期',
+	etl_batch_id VARCHAR(32) NOT NULL COMMENT '批次标识 B+yyyyMMdd',
+	etl_load_time DATETIME NOT NULL COMMENT '入库时间',
+	PRIMARY KEY (dept_code, stat_date),
+	KEY idx_dwd_hr_batch (etl_batch_date),
+	KEY idx_dwd_hr_stat (stat_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

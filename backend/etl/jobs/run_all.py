@@ -6,7 +6,7 @@
     python -m etl.jobs.run_all --batch-date 2025-06-30 --skip-quality
 
 执行链路（由 etl.scheduler.scheduler 编排）：
-    extract_ods（阻断） -> clean_dwd（阻断） -> quality_check（不阻断，产出质量报告）
+    extract_ods（阻断） -> clean_dwd（阻断） -> quality_check（阻断级规则失败即中止并告警）
 
 数据库连接优先级见 etl.config.settings.get_db_url()；本地无 MySQL 时自动回退 SQLite，
 便于在开发机上完成"抽取-清洗-质检"全链路冒烟验证。
@@ -76,11 +76,11 @@ def build_chain(
     if with_quality:
         register_task(
             "quality_check",
-            lambda **_: generate_quality_report(batch_date),
+            lambda **_: generate_quality_report(batch_date, raise_on_block=True),
             requires=("clean_dwd",),
-            blocking=False,
+            blocking=True,
             max_retry=1,
-            remark="五类质量规则校验，产出质量报告与告警",
+            remark="28 条质量规则校验，产出质量报告；BLOCK 失败阻断下游并推送站内信告警",
         )
     register_task(
         "dwd_wide",
@@ -190,8 +190,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     layering = [
         ("DIM", "dim_department"),
         ("DIM", "dim_date"),
+        ("ODS", "ods_hr_staff"),
         ("DWD", "dwd_visit_detail"),
         ("DWD", "dwd_charge_detail"),
+        ("DWD", "dwd_hr_staff_detail"),
         ("DWS", "dws_dept_daily"),
         ("ADS", "ads_outpatient_theme"),
         ("ADS", "ads_income_theme"),

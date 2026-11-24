@@ -6,15 +6,18 @@
 
 ```
 data/
-├── mock_his/                     # 模拟 HIS / EMR / LIS 业务数据（源系统导出风格 CSV）
+├── mock_his/                     # 模拟 HIS / EMR / LIS / HR 业务数据（源系统导出风格 CSV）
 │   ├── his_outpatient.csv        # HIS 门诊挂号就诊表        9,000 行 / 11 列
 │   ├── his_inpatient.csv         # HIS 住院入出院表          1,500 行 / 16 列
 │   ├── his_charge.csv            # HIS 收费明细流水         44,078 行 /  9 列
 │   ├── emr_record.csv            # EMR 病历首页摘要           1,500 行 /  7 列
-│   └── lis_report.csv            # LIS 检验报告              2,934 行 /  6 列
+│   ├── lis_report.csv            # LIS 检验报告              2,934 行 /  6 列
+│   └── hr_staff.csv              # 人事科室人力台账（新增）      30 行 /  5 列
 └── files/                        # Excel/CSV 报表文件（文件接入通道）
     └── finance_excel.csv         # 财务日报（科室×日）         910 行 /  5 列
 ```
+
+> `hr_staff.csv` 为本轮补充的模拟台账（10 个临床科室 × 3 个月末快照：2025-04-30 / 05-31 / 06-30），字段 `dept_code, dept_name, stat_date, doctor_cnt, nurse_cnt`，数值与 `dim_department` 的维护值一致（合计 123 名医师 / 217 名护士），用于接入"科室人力"类数据源并支撑指标 M28/M29 与科室运营看板的人力快照。
 
 统一统计时间窗：**2025-04-01 ~ 2025-06-30（91 天）**；编码 UTF-8、含表头、逗号分隔。
 
@@ -28,8 +31,9 @@ data/
 | `emr_record.csv` | EMR（Oracle） | `ods_emr_record` | JDBC 全量抽取 | T+1 日终批 |
 | `lis_report.csv` | LIS（SQLServer） | `ods_lis_report` | JDBC 按 `report_date` 增量抽取 | T+1 日终批 / 小时增量 |
 | `finance_excel.csv` | 财务系统导出文件 | `ods_finance_excel` | 文件上传 + 模板校验解析 | T+1 日终批（人工上传，支持定时目录扫描） |
+| `hr_staff.csv` | 人事系统（HR） | `ods_hr_staff` | 文件通道按 `stat_date` 增量抽取 | 月度台账 + T+1 目录扫描 |
 
-> 5 类数据源（HIS / EMR / LIS / 财务 / 文件通道）实现"接入不少于 5 类数据源"的目标。
+> **5 类业务系统 / 7 个接入对象**（HIS 门诊 / HIS 住院 / HIS 收费明细 / EMR / LIS / 财务文件通道 / 人事人力台账），满足任务书"接入不少于 5 类数据源（含科室人力）"的目标。
 
 ## 三、字段说明与主键
 
@@ -41,6 +45,7 @@ data/
 | emr_record.csv | `record_id` | `visit_id, diagnosis, disease_code` | ICD-10 主诊断；覆盖住院就诊 |
 | lis_report.csv | `report_id` | `visit_id, item_name, result_text` | 检验项目 8 项；结果 4 类判定 |
 | finance_excel.csv | `record_id` | `stat_date, dept_code, revenue, drug_revenue, consumable_revenue` | 10 科室 × 91 天 = 910 行，`(stat_date, dept_code)` 唯一 |
+| hr_staff.csv | `(dept_code, stat_date)` | `dept_name, doctor_cnt, nurse_cnt` | 10 科室 × 3 个月末快照 = 30 行；数值与 `dim_department` 维护值一致（123 医师 / 217 护士） |
 
 **隐私字段**：`patient_name`、`id_card`、`phone` 为模拟数据，进入 DWD 层前必须脱敏（见《指标口径手册》与《概要设计》）。
 
