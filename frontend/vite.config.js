@@ -14,7 +14,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     proxy: {
-      // 开发环境代理，避免跨域；生产环境由 Nginx 转发
+      // 开发环境把 /api 代理到后端（生产由 Nginx 反代）
       '/api': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true
@@ -24,11 +24,12 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    chunkSizeWarningLimit: 1500,
+    chunkSizeWarningLimit: 1200,
     rollupOptions: {
       output: {
+        // 按需分包：ECharts 与 Vue 生态独立，减小首屏体积
         manualChunks: {
-          echarts: ['echarts'],
+          echarts: ['echarts/core', 'echarts/charts', 'echarts/components', 'echarts/renderers'],
           vue: ['vue', 'vue-router', 'pinia']
         }
       }

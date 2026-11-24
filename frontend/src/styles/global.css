@@ -1,0 +1,281 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+  background: var(--moa-bg, #f5f7fb);
+  color: #1f2733;
+  font-size: 14px;
+}
+
+a {
+  color: var(--moa-primary, #2f6fd0);
+  text-decoration: none;
+}
+
+/* ---------- 通用布局 ---------- */
+.moa-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.moa-sidebar {
+  width: 208px;
+  flex: 0 0 208px;
+  background: #1f2937;
+  color: #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0;
+}
+
+.moa-logo {
+  padding: 0 18px 16px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.4;
+}
+
+.moa-menu-group {
+  padding: 10px 18px 6px;
+  font-size: 11px;
+  color: #7c8798;
+  letter-spacing: 1px;
+}
+
+.moa-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  color: #cbd5e1;
+  cursor: pointer;
+  font-size: 13px;
+  border-left: 3px solid transparent;
+}
+
+.moa-menu-item:hover {
+  background: #273244;
+  color: #ffffff;
+}
+
+.moa-menu-item.active {
+  background: #273244;
+  color: #ffffff;
+  border-left-color: var(--moa-primary, #2f6fd0);
+}
+
+.moa-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.moa-header {
+  height: 56px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e8ef;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+}
+
+.moa-header h1 {
+  font-size: 16px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.moa-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #6b7785;
+}
+
+.moa-role-tag {
+  background: #eef3fb;
+  color: var(--moa-primary, #2f6fd0);
+  border-radius: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+.moa-content {
+  padding: 16px 20px 28px;
+  flex: 1;
+}
+
+/* ---------- 卡片与栅格 ---------- */
+.moa-card {
+  background: #ffffff;
+  border: 1px solid #e5e8ef;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.moa-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.moa-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.moa-grid.cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.moa-grid.cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.moa-grid.cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 1180px) {
+  .moa-grid.cols-3,
+  .moa-grid.cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .moa-grid.cols-2,
+  .moa-grid.cols-3,
+  .moa-grid.cols-4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .moa-sidebar {
+    display: none;
+  }
+}
+
+/* ---------- 表单与按钮 ---------- */
+.moa-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.moa-input,
+.moa-select {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #d6dbe5;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #ffffff;
+  color: #1f2733;
+}
+
+.moa-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: 1px solid var(--moa-primary, #2f6fd0);
+  background: var(--moa-primary, #2f6fd0);
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.moa-btn.ghost {
+  background: #ffffff;
+  color: var(--moa-primary, #2f6fd0);
+}
+
+.moa-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------- 表格 ---------- */
+.moa-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.moa-table th,
+.moa-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eef1f6;
+  text-align: left;
+}
+
+.moa-table th {
+  color: #6b7785;
+  font-weight: 600;
+  background: #fafbfd;
+}
+
+.moa-table tbody tr:hover {
+  background: #f7f9fc;
+}
+
+.moa-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 状态 ---------- */
+.moa-empty,
+.moa-loading,
+.moa-error {
+  padding: 24px;
+  text-align: center;
+  color: #6b7785;
+  font-size: 13px;
+}
+
+.moa-error {
+  color: #d9534f;
+}
+
+.moa-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  background: #eef3fb;
+  color: #2f6fd0;
+}
+
+.moa-tag.warn {
+  background: #fdf3e3;
+  color: #b07d3a;
+}
+
+.moa-tag.ok {
+  background: #eaf7f0;
+  color: #2fa36b;
+}
+
+.moa-tag.danger {
+  background: #fdeceb;
+  color: #d9534f;
+}

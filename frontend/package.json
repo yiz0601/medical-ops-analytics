@@ -1,9 +1,9 @@
 {
   "name": "medical-ops-analytics-frontend",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "医疗运营数据主题分析平台前端应用（管理驾驶舱 / 科室运营看板 / 专题分析看板）",
+  "description": "医疗运营数据主题分析平台前端（管理驾驶舱 / 五大主题看板 / 报表中心 / 系统管理 / 智能问数）",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -12,15 +12,12 @@
   "dependencies": {
     "axios": "^1.7.9",
     "echarts": "^5.5.1",
-    "element-plus": "^2.9.1",
-    "@element-plus/icons-vue": "^2.3.1",
     "pinia": "^2.3.0",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",
-    "sass": "^1.83.0",
     "vite": "^5.4.11"
   }
 }
