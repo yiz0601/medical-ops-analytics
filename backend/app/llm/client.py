@@ -18,7 +18,7 @@ from typing import Any
 
 from app.core.config import get_settings
 
-DEFAULT_TIMEOUT = 30
+INTERACTIVE_TIMEOUT = 30   # 交互类（问数/知识问答）：规范要求 30 秒超时
 
 
 @dataclass
@@ -35,12 +35,13 @@ class LLMCall:
 class LLMClient:
     """OpenAI 兼容协议的轻量网关。"""
 
-    def __init__(self, timeout: int = DEFAULT_TIMEOUT) -> None:
+    def __init__(self, timeout: int | None = None) -> None:
         settings = get_settings()
         self.base_url = settings.llm_base_url
         self.api_key = settings.llm_api_key or ""
         self.model = settings.llm_model
-        self.timeout = timeout
+        # 未显式指定时按交互类 30 秒；报告等长任务由调用方传入 Settings.llm_timeout_seconds
+        self.timeout = int(timeout or INTERACTIVE_TIMEOUT)
 
     @property
     def is_available(self) -> bool:
@@ -104,10 +105,10 @@ def extract_json(text: str) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
-@lru_cache(maxsize=1)
-def get_client() -> LLMClient:
-    """获取模型网关单例。"""
-    return LLMClient()
+@lru_cache(maxsize=4)
+def get_client(timeout: int | None = None) -> LLMClient:
+    """获取模型网关单例（按超时档位缓存：交互类 30s / 报告类取配置值）。"""
+    return LLMClient(timeout=timeout)
 
 
 def reset_client_cache() -> None:
